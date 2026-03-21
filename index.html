@@ -1,27 +1,27 @@
 <!DOCTYPE html><html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Bird Balls</title>
 <style>
-  body { margin:0; font-family: Arial; background:#87CEEB; overflow:hidden; }
+  body { margin:0; font-family: Arial; background:linear-gradient(#87CEEB,#cfefff); overflow:hidden; }
   canvas { display:block; }
   #ui {
     position:fixed;
-    top:10px;
+    top:15px;
     left:50%;
     transform:translateX(-50%);
     color:white;
-    font-size:24px;
+    font-size:26px;
     font-weight:bold;
-    text-shadow:0 2px 4px rgba(0,0,0,0.5);
+    text-shadow:0 3px 6px rgba(0,0,0,0.5);
   }
   #gameOver {
     position:fixed;
     top:50%;
     left:50%;
     transform:translate(-50%,-50%);
-    background:rgba(0,0,0,0.7);
+    background:rgba(0,0,0,0.8);
     color:white;
     padding:30px;
     border-radius:20px;
@@ -30,10 +30,10 @@
   }
   button {
     margin-top:15px;
-    padding:10px 20px;
-    font-size:16px;
+    padding:12px 25px;
+    font-size:18px;
     border:none;
-    border-radius:10px;
+    border-radius:12px;
     cursor:pointer;
   }
 </style>
@@ -47,11 +47,16 @@
 <canvas id="game"></canvas><script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
 
 let score = 0;
-let gravity = 0.6;
+let gravity = 0.7;
 let charging = false;
 let charge = 0;
 
@@ -59,11 +64,11 @@ const img = new Image();
 img.src = 'images/1000043615-removebg-preview.png';
 
 const player = {
-  x: 150,
-  y: canvas.height - 150,
+  x: 120,
+  y: canvas.height - 250,
   vx: 0,
   vy: 0,
-  size: 60,
+  size: 90,
   onGround: true
 };
 
@@ -72,37 +77,42 @@ let platforms = [];
 function createPlatforms() {
   platforms = [];
   let x = 0;
-  for (let i = 0; i < 20; i++) {
-    let width = 120;
+  for (let i = 0; i < 25; i++) {
+    let width = 180 + Math.random()*80;
+    let gap = 120 + Math.random()*120;
+    let heightOffset = Math.random()*120;
+
     platforms.push({
       x: x,
-      y: canvas.height - 80,
+      y: canvas.height - 180 - heightOffset,
       w: width,
       h: 20
     });
-    x += width + Math.random() * 150;
+
+    x += width + gap;
   }
 }
 
 createPlatforms();
 
 function drawPlayer() {
-  let squish = charging ? Math.min(charge / 20, 20) : 0;
+  let squish = charging ? Math.min(charge / 15, 25) : 0;
 
   ctx.save();
   ctx.translate(player.x, player.y);
-
-  // Flip image horizontally
-  ctx.scale(-1, 1);
+  ctx.scale(-1,1);
 
   ctx.drawImage(img, -player.size/2, -player.size/2 + squish, player.size, player.size - squish);
   ctx.restore();
 }
 
 function drawPlatforms() {
-  ctx.fillStyle = '#654321';
   platforms.forEach(p => {
+    ctx.fillStyle = '#3c8d2f';
     ctx.fillRect(p.x, p.y, p.w, p.h);
+
+    ctx.fillStyle = '#2e6b23';
+    ctx.fillRect(p.x, p.y, p.w, 6);
   });
 }
 
@@ -117,28 +127,26 @@ function update() {
 
   platforms.forEach(p => {
     if (player.x > p.x && player.x < p.x + p.w) {
-      if (player.y + player.size/2 > p.y && player.y + player.size/2 < p.y + 20 && player.vy >= 0) {
+      if (player.y + player.size/2 > p.y && player.y + player.size/2 < p.y + 25 && player.vy >= 0) {
         player.y = p.y - player.size/2;
         player.vy = 0;
-        player.vx = 0;
+        player.vx *= 0.6;
         player.onGround = true;
       }
     }
   });
 
-  // camera scroll
-  if (player.x > canvas.width / 2) {
-    let diff = player.x - canvas.width / 2;
-    player.x = canvas.width / 2;
+  // camera follow
+  if (player.x > canvas.width * 0.4) {
+    let diff = player.x - canvas.width * 0.4;
+    player.x = canvas.width * 0.4;
     platforms.forEach(p => p.x -= diff);
   }
 
-  // score update
-  score = Math.max(score, Math.floor(player.x / 100));
+  score = Math.max(score, Math.floor(player.x / 120));
   document.getElementById('ui').innerText = 'Score: ' + score;
 
-  // death
-  if (player.y > canvas.height + 100) {
+  if (player.y > canvas.height + 200) {
     document.getElementById('gameOver').style.display = 'block';
   }
 }
@@ -154,37 +162,42 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-
 loop();
 
-// controls
-window.addEventListener('mousedown', () => {
-  if (player.onGround) {
+function startCharge(){
+  if(player.onGround){
     charging = true;
     charge = 0;
   }
-});
+}
 
-window.addEventListener('mouseup', () => {
-  if (charging) {
+function releaseJump(){
+  if(charging){
     charging = false;
-
-    player.vy = -10 - charge * 0.2;
-    player.vx = 5 + charge * 0.2;
+    player.vy = -12 - charge*0.25;
+    player.vx = 6 + charge*0.25;
     player.onGround = false;
   }
-});
+}
 
-function chargeLoop() {
-  if (charging) charge += 1;
+// mouse
+window.addEventListener('mousedown', startCharge);
+window.addEventListener('mouseup', releaseJump);
+
+// touch (mobile fix)
+window.addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); }, {passive:false});
+window.addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); }, {passive:false});
+
+function chargeLoop(){
+  if(charging) charge += 1;
   requestAnimationFrame(chargeLoop);
 }
 chargeLoop();
 
-function restart() {
+function restart(){
   score = 0;
-  player.x = 150;
-  player.y = canvas.height - 150;
+  player.x = 120;
+  player.y = canvas.height - 250;
   player.vx = 0;
   player.vy = 0;
   createPlatforms();

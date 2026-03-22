@@ -34,28 +34,23 @@
   }
 
   button {
-    margin-top:15px;
-    padding:12px 25px;
-    font-size:18px;
-    border:none;
-    border-radius:12px;
-    cursor:pointer;
-  }
-
-  /* SPRING BUTTON */
-  #springBtn {
-    position: fixed;
-    bottom: 40px;
-    right: 40px;
-    padding: 22px 40px;
-    font-size: 26px;
-    background:#3c8d2f;
-    color:white;
+    padding:20px 30px;
+    font-size:28px;
     border:none;
     border-radius:18px;
+    background:#3c8d2f;
+    color:white;
     box-shadow:0 4px 10px rgba(0,0,0,0.4);
-    cursor:pointer;
     user-select:none;
+  }
+
+  #controls {
+    position:fixed;
+    bottom:40px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:40px;
   }
 </style>
 </head>
@@ -69,7 +64,10 @@
   <button onclick="restart()">Try Again</button>
 </div>
 
-<button id="springBtn">SPRING</button>
+<div id="controls">
+  <button id="downBtn">⬇️</button>
+  <button id="upBtn">⬆️</button>
+</div>
 
 <canvas id="game"></canvas>
 
@@ -126,7 +124,7 @@ createPlatforms();
 
 
 // ---------------------------
-// BOTTOM-HEAVY SQUISH DRAWING
+// FIXED BOTTOM-HEAVY SQUISH
 // ---------------------------
 function drawPlayer() {
   let squish = charging ? Math.min(charge / 10, 35) : 0;
@@ -141,18 +139,18 @@ function drawPlayer() {
   let squishedBottom = bottomHeight - squish;
   if (squishedBottom < 10) squishedBottom = 10;
 
-  // Top half (normal)
+  // Top half
   ctx.drawImage(
     img,
-    0, 0, player.size, topHeight,
+    0, 0, img.width, img.height * 0.55,
     -player.size/2, -player.size/2,
     player.size, topHeight
   );
 
-  // Bottom half (squished)
+  // Bottom half
   ctx.drawImage(
     img,
-    0, topHeight, player.size, bottomHeight,
+    0, img.height * 0.55, img.width, img.height * 0.45,
     -player.size/2,
     -player.size/2 + topHeight + (bottomHeight - squishedBottom),
     player.size,
@@ -241,20 +239,15 @@ function releaseJump(){
   }
 }
 
-// mouse
-window.addEventListener('mousedown', startCharge);
-window.addEventListener('mouseup', releaseJump);
 
-// touch
-window.addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); }, {passive:false});
-window.addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); }, {passive:false});
+// ---------------------------
+// BUTTON CONTROLS
+// ---------------------------
+document.getElementById('downBtn').addEventListener('mousedown', startCharge);
+document.getElementById('downBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); });
 
-// SPRING BUTTON
-const springBtn = document.getElementById('springBtn');
-springBtn.addEventListener('mousedown', startCharge);
-springBtn.addEventListener('mouseup', releaseJump);
-springBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); });
-springBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); });
+document.getElementById('upBtn').addEventListener('mouseup', releaseJump);
+document.getElementById('upBtn').addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); });
 
 
 // charge loop

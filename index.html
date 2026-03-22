@@ -148,6 +148,9 @@ let maxCharge = 80;
 let targetSquish = 0;
 let currentSquish = 0; // elastic squish
 
+let holdingDown = false;
+let holdingUp = false;
+
 const img = new Image();
 img.src = 'images/1000043615-removebg-preview.png';
 
@@ -159,6 +162,8 @@ const player = {
   size: 150,
   onGround: true
 };
+
+let worldX = player.x;
 
 let platforms = [];
 
@@ -185,7 +190,6 @@ createPlatforms();
 
 /* DRAW PLAYER WITH ELASTIC SQUISH */
 function drawPlayer() {
-  // smooth elastic interpolation
   currentSquish += (targetSquish - currentSquish) * 0.25;
 
   let topHeight = player.size * 0.55;
@@ -233,12 +237,13 @@ function update() {
   if (!player.onGround) {
     player.vy += gravity;
     player.x += player.vx;
+    worldX += player.vx;
     player.y += player.vy;
   }
 
   player.onGround = false;
 
-  // predictive collision so you don't fall through
+  // predictive collision
   platforms.forEach(p => {
     if (player.x > p.x && player.x < p.x + p.w) {
       let feet = player.y + player.size/2;
@@ -253,13 +258,15 @@ function update() {
     }
   });
 
+  // camera follow
   if (player.x > canvas.width * 0.35) {
     let diff = player.x - canvas.width * 0.35;
     player.x = canvas.width * 0.35;
     platforms.forEach(p => p.x -= diff);
   }
 
-  score = Math.max(score, Math.floor(player.x / 160));
+  // score based on world distance
+  score = Math.max(score, Math.floor(worldX / 160));
   document.getElementById('ui').innerText = score;
 
   if (player.y > canvas.height + 250) {
@@ -283,8 +290,8 @@ loop();
 /* MANUAL SQUISH CONTROL (ELASTIC, MORE POWERFUL) */
 function pressDown() {
   if (player.onGround) {
-    targetSquish += 4;   // more visible per press
-    charge += 3;         // more power per press
+    targetSquish += 4;
+    charge += 3;
     if (targetSquish > 70) targetSquish = 70;
     if (charge > maxCharge) charge = maxCharge;
   }
@@ -292,8 +299,8 @@ function pressDown() {
 
 function pressUp() {
   if (player.onGround) {
-    targetSquish -= 3;   // undo a bit
-    charge -= 2;         // reduce power a bit
+    targetSquish -= 3;
+    charge -= 2;
     if (targetSquish < 0) targetSquish = 0;
     if (charge < 0) charge = 0;
   }
@@ -302,23 +309,41 @@ function pressUp() {
 /* RELEASE JUMP (STRONGER ARC) */
 function releaseJump() {
   if (player.onGround && charge > 0) {
-    player.vy = -12 - charge * 0.35; // higher
-    player.vx = 3.0 + charge * 0.18; // farther
+    player.vy = -12 - charge * 0.35;
+    player.vx = 3.0 + charge * 0.18;
     player.onGround = false;
     targetSquish = 0;
     charge = 0;
   }
 }
 
+/* HOLD LOGIC */
+function handleHeldButtons() {
+  if (holdingDown) pressDown();
+  if (holdingUp) pressUp();
+  requestAnimationFrame(handleHeldButtons);
+}
+handleHeldButtons();
+
 /* BUTTON EVENTS */
-document.getElementById('downBtn').addEventListener('mousedown', pressDown);
-document.getElementById('downBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); pressDown(); });
+const downBtn = document.getElementById('downBtn');
+const upBtn = document.getElementById('upBtn');
+const releaseBtn = document.getElementById('releaseBtn');
 
-document.getElementById('upBtn').addEventListener('mousedown', pressUp);
-document.getElementById('upBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); pressUp(); });
+downBtn.addEventListener('mousedown', () => holdingDown = true);
+downBtn.addEventListener('mouseup', () => holdingDown = false);
+downBtn.addEventListener('mouseleave', () => holdingDown = false);
+downBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); holdingDown = true; });
+downBtn.addEventListener('touchend', ()=> holdingDown = false);
 
-document.getElementById('releaseBtn').addEventListener('mousedown', releaseJump);
-document.getElementById('releaseBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); releaseJump(); });
+upBtn.addEventListener('mousedown', () => holdingUp = true);
+upBtn.addEventListener('mouseup', () => holdingUp = false);
+upBtn.addEventListener('mouseleave', () => holdingUp = false);
+upBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); holdingUp = true; });
+upBtn.addEventListener('touchend', ()=> holdingUp = false);
+
+releaseBtn.addEventListener('mousedown', releaseJump);
+releaseBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); releaseJump(); });
 
 /* RESPAWN */
 document.getElementById('respawnBtn').addEventListener('click', ()=> {
@@ -332,6 +357,7 @@ function restart(){
   player.y = canvas.height - 500;
   player.vx = 0;
   player.vy = 0;
+  worldX = player.x;
   targetSquish = 0;
   currentSquish = 0;
   charge = 0;

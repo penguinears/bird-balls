@@ -4,7 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Bird Balls</title>
+
+<!-- Favicon -->
 <link rel="icon" type="image/png" href="images/1000043615-removebg-preview.png">
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
 <style>
   body { margin:0; font-family: Arial; background:linear-gradient(#87CEEB,#cfefff); overflow:hidden; }
   canvas { display:block; }
@@ -33,37 +39,37 @@
     display:none;
   }
 
-  .btn {
-    padding:20px 30px;
-    font-size:28px;
-    border:none;
-    border-radius:18px;
-    background:#444;
-    color:white;
-    box-shadow:0 4px 10px rgba(0,0,0,0.4);
-    user-select:none;
-  }
-
   #controls {
     position:fixed;
     bottom:40px;
     left:50%;
     transform:translateX(-50%);
     display:flex;
-    gap:40px;
+    gap:30px;
+  }
+
+  .ctrlBtn {
+    padding:20px 30px;
+    font-size:26px;
+    border:4px solid rgb(30,48,80);
+    border-radius:16px;
+    background:white;
+    color:black;
+    box-shadow:0 4px 10px rgba(0,0,0,0.3);
+    user-select:none;
   }
 
   #respawnBtn {
     position:fixed;
     top:10px;
     left:10px;
-    padding:10px 16px;
+    padding:12px 18px;
     font-size:20px;
-    border:none;
+    border:3px solid rgb(30,48,80);
     border-radius:12px;
-    background:#444;
-    color:white;
-    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+    background:white;
+    color:black;
+    box-shadow:0 3px 8px rgba(0,0,0,0.3);
     user-select:none;
   }
 </style>
@@ -77,12 +83,19 @@
 
 <div id="gameOver">
   <h1>You Died</h1>
-  <button class="btn" onclick="restart()">Try Again</button>
+  <button class="ctrlBtn" onclick="restart()">Try Again</button>
 </div>
 
 <div id="controls">
-  <button id="downBtn" class="btn">⬇️</button>
-  <button id="upBtn" class="btn">RELEASE</button>
+  <button id="downBtn" class="ctrlBtn">
+    <i class="fa-solid fa-arrow-down" style="color: rgb(30, 48, 80);"></i>
+  </button>
+
+  <button id="releaseBtn" class="ctrlBtn">RELEASE</button>
+
+  <button id="cancelBtn" class="ctrlBtn">
+    <i class="fa-solid fa-xmark" style="color: rgb(30, 48, 80);"></i>
+  </button>
 </div>
 
 <canvas id="game"></canvas>
@@ -108,11 +121,11 @@ const img = new Image();
 img.src = 'images/1000043615-removebg-preview.png';
 
 const player = {
-  x: 160,
-  y: canvas.height - 260,
+  x: 200,
+  y: canvas.height - 500, // spawn ABOVE platforms
   vx: 0,
   vy: 0,
-  size: 140,   // bigger bird
+  size: 150, // bigger bird
   onGround: true
 };
 
@@ -128,9 +141,9 @@ function createPlatforms() {
 
     platforms.push({
       x: x,
-      y: canvas.height - 320 - heightOffset, // higher platforms
+      y: canvas.height - 300 - heightOffset, // higher platforms
       w: width,
-      h: canvas.height // goes to bottom
+      h: canvas.height // extends to bottom
     });
 
     x += width + gap;
@@ -155,7 +168,6 @@ function drawPlayer() {
 
   let topShift = (bottomHeight - squishedBottom);
 
-  // top half
   ctx.drawImage(
     img,
     0, 0, img.width, img.height * 0.55,
@@ -163,7 +175,6 @@ function drawPlayer() {
     player.size, topHeight
   );
 
-  // bottom half
   ctx.drawImage(
     img,
     0, img.height * 0.55, img.width, img.height * 0.45,
@@ -178,13 +189,11 @@ function drawPlayer() {
 
 function drawPlatforms() {
   platforms.forEach(p => {
-    // body
-    ctx.fillStyle = '#555';
+    ctx.fillStyle = '#3c8d2f'; // green
     ctx.fillRect(p.x, p.y, p.w, p.h);
 
-    // top edge
-    ctx.fillStyle = '#777';
-    ctx.fillRect(p.x, p.y, p.w, 10);
+    ctx.fillStyle = '#2e6b23'; // darker top
+    ctx.fillRect(p.x, p.y, p.w, 12);
   });
 }
 
@@ -208,7 +217,6 @@ function update() {
     }
   });
 
-  // camera follow
   if (player.x > canvas.width * 0.35) {
     let diff = player.x - canvas.width * 0.35;
     player.x = canvas.width * 0.35;
@@ -250,39 +258,43 @@ function releaseJump(){
 
     let c = Math.min(charge, maxCharge);
 
-    // arc jump: more up than across, but not too high
-    player.vy = -9 - c * 0.18;  // vertical
-    player.vx = 2.2 + c * 0.10; // horizontal
+    player.vy = -9 - c * 0.18;  // vertical arc
+    player.vx = 2.2 + c * 0.10; // horizontal arc
 
     player.onGround = false;
   }
 }
 
-// buttons
+function cancelCharge() {
+  charging = false;
+  charge = 0;
+}
+
+// button events
 document.getElementById('downBtn').addEventListener('mousedown', startCharge);
 document.getElementById('downBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); });
 
-document.getElementById('upBtn').addEventListener('mouseup', releaseJump);
-document.getElementById('upBtn').addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); });
+document.getElementById('releaseBtn').addEventListener('mouseup', releaseJump);
+document.getElementById('releaseBtn').addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); });
 
-// charge loop
+document.getElementById('cancelBtn').addEventListener('mousedown', cancelCharge);
+document.getElementById('cancelBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); cancelCharge(); });
+
 function chargeLoop(){
-  if(charging) charge += 0.7; // small increase per frame
+  if(charging) charge += 0.6;
   requestAnimationFrame(chargeLoop);
 }
 chargeLoop();
 
-// respawn without needing to die
 document.getElementById('respawnBtn').addEventListener('click', ()=> {
   restart();
   document.getElementById('gameOver').style.display = 'none';
 });
 
-// restart
 function restart(){
   score = 0;
-  player.x = 160;
-  player.y = canvas.height - 260;
+  player.x = 200;
+  player.y = canvas.height - 500;
   player.vx = 0;
   player.vy = 0;
   charging = false;

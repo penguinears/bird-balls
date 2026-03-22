@@ -2,22 +2,31 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>Bird Balls</title>
 <link rel="icon" type="image/png" href="images/1000043615-removebg-preview.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-body{margin:0;font-family:Arial;overflow:hidden}
+body{margin:0;font-family:Arial;overflow:hidden;touch-action:none}
 canvas{display:block}
-#ui{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:white;font-size:40px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5)}
-#skipMsg{position:fixed;top:60px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:24px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5)}
+#ui{position:fixed;top:8px;left:50%;transform:translateX(-50%);color:white;font-size:34px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5);pointer-events:none}
+#skipMsg{position:fixed;top:46px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:20px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5);pointer-events:none}
 #deathScreen{position:fixed;top:0;left:0;width:100vw;height:100vh;background:black;display:none;justify-content:center;align-items:center;flex-direction:column}
 #deathScreen img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:.7}
-#deathScreen h1{position:relative;color:red;font-size:70px;font-weight:bold;margin-bottom:20px;text-shadow:0 0 20px black}
-#deathScreen button{position:relative;padding:20px 40px;font-size:30px;border:4px solid rgb(30,48,80);border-radius:16px;background:white;color:black;box-shadow:0 4px 10px rgba(0,0,0,0.3)}
-#controls{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:30px}
-.ctrlBtn{padding:20px 30px;font-size:26px;border:4px solid rgb(30,48,80);border-radius:16px;background:white;color:black;box-shadow:0 4px 10px rgba(0,0,0,0.3);user-select:none}
-#respawnBtn{position:fixed;top:10px;left:10px;padding:12px 18px;font-size:20px;border:3px solid rgb(30,48,80);border-radius:12px;background:white;color:black;box-shadow:0 3px 8px rgba(0,0,0,0.3);user-select:none}
+#deathScreen h1{position:relative;color:red;font-size:60px;font-weight:bold;margin-bottom:18px;text-shadow:0 0 20px black}
+#deathScreen button{position:relative;padding:16px 32px;font-size:24px;border:4px solid rgb(30,48,80);border-radius:16px;background:white;color:black;box-shadow:0 4px 10px rgba(0,0,0,0.3)}
+#controls{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:16px}
+.ctrlBtn{padding:12px 18px;font-size:20px;border:3px solid rgb(30,48,80);border-radius:14px;background:white;color:black;box-shadow:0 3px 8px rgba(0,0,0,0.3);user-select:none}
+#respawnBtn{position:fixed;top:8px;left:8px;padding:8px 12px;font-size:16px;border:3px solid rgb(30,48,80);border-radius:10px;background:white;color:black;box-shadow:0 3px 8px rgba(0,0,0,0.3);user-select:none}
+@media (max-width:900px){
+  #ui{font-size:26px;top:6px}
+  #skipMsg{font-size:16px;top:34px}
+  #controls{bottom:4px;gap:10px}
+  .ctrlBtn{padding:10px 14px;font-size:16px;border-width:2px}
+  #respawnBtn{padding:6px 10px;font-size:14px;border-width:2px}
+  #deathScreen h1{font-size:40px}
+  #deathScreen button{font-size:20px;padding:14px 26px}
+}
 </style>
 </head>
 <body>
@@ -71,18 +80,20 @@ const sndLand=new Audio('sounds/playzz-thud-491559 (1).mp3');
 const img=new Image();
 img.src='images/1000043615-removebg-preview.png';
 
-const player={x:200,y:canvas.height-500,vx:0,vy:0,size:150,onGround:true};
+const baseSize=innerWidth<innerHeight?120:140;
+const player={x:220,y:canvas.height-520,vx:0,vy:0,size:baseSize,onGround:true};
 
 let platforms=[];
 
 function createPlatforms(){
   platforms=[];
   let x=0;
-  for(let i=0;i<40;i++){
+  for(let i=0;i<50;i++){
     let w=220+Math.random()*120;
     let gap=220+Math.random()*220;
     let hOff=Math.random()*140;
-    platforms.push({x:x,y:canvas.height-300-hOff,w:w,h:canvas.height,index:i});
+    let groundY=canvas.height-260-hOff;
+    platforms.push({x:x,y:groundY,w:w,h:canvas.height,index:i});
     x+=w+gap;
   }
 }
@@ -226,9 +237,9 @@ function update(){
     }
   });
 
-  if(player.x>canvas.width*.35){
-    let d=player.x-canvas.width*.35;
-    player.x=canvas.width*.35;
+  if(player.x>canvas.width*.3){
+    let d=player.x-canvas.width*.3;
+    player.x=canvas.width*.3;
     platforms.forEach(p=>p.x-=d);
   }
 
@@ -257,6 +268,10 @@ function update(){
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  let scale=innerWidth<innerHeight?0.8:0.9;
+  ctx.translate(canvas.width*0.5*(1-scale),canvas.height*0.5*(1-scale));
+  ctx.scale(scale,scale);
   drawClouds();
   drawLiquid();
   ctx.save();
@@ -264,6 +279,7 @@ function draw(){
   drawPlatforms();
   drawParticles();
   drawPlayer();
+  ctx.restore();
   ctx.restore();
 }
 
@@ -349,8 +365,8 @@ function restart(){
   score=0;
   lastPlatformIndex=-1;
   document.getElementById('skipMsg').textContent='';
-  player.x=200;
-  player.y=canvas.height-500;
+  player.x=220;
+  player.y=canvas.height-520;
   player.vx=0;
   player.vy=0;
   targetSquish=0;

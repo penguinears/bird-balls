@@ -1,11 +1,14 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Bird Balls</title>
+
 <style>
   body { margin:0; font-family: Arial; background:linear-gradient(#87CEEB,#cfefff); overflow:hidden; }
   canvas { display:block; }
+
   #ui {
     position:fixed;
     top:15px;
@@ -16,6 +19,7 @@
     font-weight:bold;
     text-shadow:0 3px 6px rgba(0,0,0,0.5);
   }
+
   #gameOver {
     position:fixed;
     top:50%;
@@ -28,6 +32,7 @@
     text-align:center;
     display:none;
   }
+
   button {
     margin-top:15px;
     padding:12px 25px;
@@ -36,15 +41,39 @@
     border-radius:12px;
     cursor:pointer;
   }
+
+  /* SPRING BUTTON */
+  #springBtn {
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    padding: 22px 40px;
+    font-size: 26px;
+    background:#3c8d2f;
+    color:white;
+    border:none;
+    border-radius:18px;
+    box-shadow:0 4px 10px rgba(0,0,0,0.4);
+    cursor:pointer;
+    user-select:none;
+  }
 </style>
 </head>
+
 <body>
+
 <div id="ui">Score: 0</div>
+
 <div id="gameOver">
   <h1>You Died</h1>
   <button onclick="restart()">Try Again</button>
 </div>
-<canvas id="game"></canvas><script>
+
+<button id="springBtn">SPRING</button>
+
+<canvas id="game"></canvas>
+
+<script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
@@ -95,16 +124,44 @@ function createPlatforms() {
 
 createPlatforms();
 
+
+// ---------------------------
+// BOTTOM-HEAVY SQUISH DRAWING
+// ---------------------------
 function drawPlayer() {
-  let squish = charging ? Math.min(charge / 15, 25) : 0;
+  let squish = charging ? Math.min(charge / 10, 35) : 0;
 
   ctx.save();
   ctx.translate(player.x, player.y);
-  ctx.scale(-1,1);
+  ctx.scale(-1, 1);
 
-  ctx.drawImage(img, -player.size/2, -player.size/2 + squish, player.size, player.size - squish);
+  let topHeight = player.size * 0.55;
+  let bottomHeight = player.size * 0.45;
+
+  let squishedBottom = bottomHeight - squish;
+  if (squishedBottom < 10) squishedBottom = 10;
+
+  // Top half (normal)
+  ctx.drawImage(
+    img,
+    0, 0, player.size, topHeight,
+    -player.size/2, -player.size/2,
+    player.size, topHeight
+  );
+
+  // Bottom half (squished)
+  ctx.drawImage(
+    img,
+    0, topHeight, player.size, bottomHeight,
+    -player.size/2,
+    -player.size/2 + topHeight + (bottomHeight - squishedBottom),
+    player.size,
+    squishedBottom
+  );
+
   ctx.restore();
 }
+
 
 function drawPlatforms() {
   platforms.forEach(p => {
@@ -164,6 +221,10 @@ function loop() {
 }
 loop();
 
+
+// ---------------------------
+// CHARGE + JUMP
+// ---------------------------
 function startCharge(){
   if(player.onGround){
     charging = true;
@@ -184,16 +245,27 @@ function releaseJump(){
 window.addEventListener('mousedown', startCharge);
 window.addEventListener('mouseup', releaseJump);
 
-// touch (mobile fix)
+// touch
 window.addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); }, {passive:false});
 window.addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); }, {passive:false});
 
+// SPRING BUTTON
+const springBtn = document.getElementById('springBtn');
+springBtn.addEventListener('mousedown', startCharge);
+springBtn.addEventListener('mouseup', releaseJump);
+springBtn.addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); });
+springBtn.addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); });
+
+
+// charge loop
 function chargeLoop(){
   if(charging) charge += 1;
   requestAnimationFrame(chargeLoop);
 }
 chargeLoop();
 
+
+// restart
 function restart(){
   score = 0;
   player.x = 120;
@@ -203,5 +275,7 @@ function restart(){
   createPlatforms();
   document.getElementById('gameOver').style.display = 'none';
 }
-</script></body>
+</script>
+
+</body>
 </html>

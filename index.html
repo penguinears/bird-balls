@@ -142,9 +142,11 @@ window.addEventListener('resize', resize);
 
 let score = 0;
 let gravity = 0.6;
+
 let charge = 0;
-let maxCharge = 80; // more powerful
-let squish = 0;
+let maxCharge = 80;
+let targetSquish = 0;
+let currentSquish = 0; // elastic squish
 
 const img = new Image();
 img.src = 'images/1000043615-removebg-preview.png';
@@ -181,12 +183,15 @@ function createPlatforms() {
 
 createPlatforms();
 
-/* DRAW PLAYER WITH MANUAL SQUISH */
+/* DRAW PLAYER WITH ELASTIC SQUISH */
 function drawPlayer() {
+  // smooth elastic interpolation
+  currentSquish += (targetSquish - currentSquish) * 0.25;
+
   let topHeight = player.size * 0.55;
   let bottomHeight = player.size * 0.45;
 
-  let squishedBottom = bottomHeight - squish;
+  let squishedBottom = bottomHeight - currentSquish;
   if (squishedBottom < 10) squishedBottom = 10;
 
   let topShift = (bottomHeight - squishedBottom);
@@ -233,9 +238,13 @@ function update() {
 
   player.onGround = false;
 
+  // predictive collision so you don't fall through
   platforms.forEach(p => {
     if (player.x > p.x && player.x < p.x + p.w) {
-      if (player.y + player.size/2 > p.y && player.y + player.size/2 < p.y + 45 && player.vy >= 0) {
+      let feet = player.y + player.size/2;
+      let nextFeet = feet + player.vy;
+
+      if (feet <= p.y && nextFeet >= p.y) {
         player.y = p.y - player.size/2;
         player.vy = 0;
         player.vx *= 0.55;
@@ -271,32 +280,32 @@ function loop() {
 }
 loop();
 
-/* MANUAL SQUISH CONTROL */
+/* MANUAL SQUISH CONTROL (ELASTIC, MORE POWERFUL) */
 function pressDown() {
   if (player.onGround) {
-    squish += 4;
-    charge += 2;
-    if (squish > 60) squish = 60;
+    targetSquish += 4;   // more visible per press
+    charge += 3;         // more power per press
+    if (targetSquish > 70) targetSquish = 70;
     if (charge > maxCharge) charge = maxCharge;
   }
 }
 
 function pressUp() {
   if (player.onGround) {
-    squish -= 3;
-    charge -= 1.5;
-    if (squish < 0) squish = 0;
+    targetSquish -= 3;   // undo a bit
+    charge -= 2;         // reduce power a bit
+    if (targetSquish < 0) targetSquish = 0;
     if (charge < 0) charge = 0;
   }
 }
 
-/* RELEASE JUMP */
+/* RELEASE JUMP (STRONGER ARC) */
 function releaseJump() {
   if (player.onGround && charge > 0) {
-    player.vy = -10 - charge * 0.22;
-    player.vx = 2.5 + charge * 0.12;
+    player.vy = -12 - charge * 0.35; // higher
+    player.vx = 3.0 + charge * 0.18; // farther
     player.onGround = false;
-    squish = 0;
+    targetSquish = 0;
     charge = 0;
   }
 }
@@ -323,7 +332,8 @@ function restart(){
   player.y = canvas.height - 500;
   player.vx = 0;
   player.vy = 0;
-  squish = 0;
+  targetSquish = 0;
+  currentSquish = 0;
   charge = 0;
   createPlatforms();
   document.getElementById('deathScreen').style.display = 'none';

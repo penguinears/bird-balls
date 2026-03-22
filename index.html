@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Bird Balls</title>
-
+<link rel="icon" type="image/png" href="images/1000043615-removebg-preview.png">
 <style>
   body { margin:0; font-family: Arial; background:linear-gradient(#87CEEB,#cfefff); overflow:hidden; }
   canvas { display:block; }
@@ -25,7 +25,7 @@
     top:50%;
     left:50%;
     transform:translate(-50%,-50%);
-    background:rgba(0,0,0,0.8);
+    background:rgba(0,0,0,0.85);
     color:white;
     padding:30px;
     border-radius:20px;
@@ -33,12 +33,12 @@
     display:none;
   }
 
-  button {
+  .btn {
     padding:20px 30px;
     font-size:28px;
     border:none;
     border-radius:18px;
-    background:#3c8d2f;
+    background:#444;
     color:white;
     box-shadow:0 4px 10px rgba(0,0,0,0.4);
     user-select:none;
@@ -52,6 +52,20 @@
     display:flex;
     gap:40px;
   }
+
+  #respawnBtn {
+    position:fixed;
+    top:10px;
+    left:10px;
+    padding:10px 16px;
+    font-size:20px;
+    border:none;
+    border-radius:12px;
+    background:#444;
+    color:white;
+    box-shadow:0 3px 8px rgba(0,0,0,0.4);
+    user-select:none;
+  }
 </style>
 </head>
 
@@ -59,14 +73,16 @@
 
 <div id="ui">0</div>
 
+<button id="respawnBtn">↻</button>
+
 <div id="gameOver">
   <h1>You Died</h1>
-  <button onclick="restart()">Try Again</button>
+  <button class="btn" onclick="restart()">Try Again</button>
 </div>
 
 <div id="controls">
-  <button id="downBtn">⬇️</button>
-  <button id="upBtn">⬆️</button>
+  <button id="downBtn" class="btn">⬇️</button>
+  <button id="upBtn" class="btn">RELEASE</button>
 </div>
 
 <canvas id="game"></canvas>
@@ -83,19 +99,20 @@ resize();
 window.addEventListener('resize', resize);
 
 let score = 0;
-let gravity = 0.7;
+let gravity = 0.6;
 let charging = false;
 let charge = 0;
+let maxCharge = 45;
 
 const img = new Image();
 img.src = 'images/1000043615-removebg-preview.png';
 
 const player = {
-  x: 120,
-  y: canvas.height - 250,
+  x: 160,
+  y: canvas.height - 260,
   vx: 0,
   vy: 0,
-  size: 90,
+  size: 140,   // bigger bird
   onGround: true
 };
 
@@ -105,15 +122,15 @@ function createPlatforms() {
   platforms = [];
   let x = 0;
   for (let i = 0; i < 40; i++) {
-    let width = 200 + Math.random()*100;
-    let gap = 200 + Math.random()*200; // bigger gaps
-    let heightOffset = Math.random()*150;
+    let width = 220 + Math.random()*120;
+    let gap = 220 + Math.random()*220;
+    let heightOffset = Math.random()*140;
 
     platforms.push({
       x: x,
-      y: canvas.height - 200 - heightOffset,
+      y: canvas.height - 320 - heightOffset, // higher platforms
       w: width,
-      h: canvas.height // goes all the way down
+      h: canvas.height // goes to bottom
     });
 
     x += width + gap;
@@ -122,12 +139,9 @@ function createPlatforms() {
 
 createPlatforms();
 
-
-// ---------------------------
-// FIXED BOTTOM-HEAVY SQUISH
-// ---------------------------
+// bottom-heavy squish with top moving down
 function drawPlayer() {
-  let squish = charging ? Math.min(charge / 12, 30) : 0;
+  let squish = charging ? Math.min(charge * 0.6, 32) : 0;
 
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -137,12 +151,11 @@ function drawPlayer() {
   let bottomHeight = player.size * 0.45;
 
   let squishedBottom = bottomHeight - squish;
-  if (squishedBottom < 10) squishedBottom = 10;
+  if (squishedBottom < 12) squishedBottom = 12;
 
-  // Move top half down when bottom compresses
   let topShift = (bottomHeight - squishedBottom);
 
-  // Top half
+  // top half
   ctx.drawImage(
     img,
     0, 0, img.width, img.height * 0.55,
@@ -150,7 +163,7 @@ function drawPlayer() {
     player.size, topHeight
   );
 
-  // Bottom half
+  // bottom half
   ctx.drawImage(
     img,
     0, img.height * 0.55, img.width, img.height * 0.45,
@@ -163,13 +176,14 @@ function drawPlayer() {
   ctx.restore();
 }
 
-
 function drawPlatforms() {
   platforms.forEach(p => {
-    ctx.fillStyle = '#3c8d2f';
+    // body
+    ctx.fillStyle = '#555';
     ctx.fillRect(p.x, p.y, p.w, p.h);
 
-    ctx.fillStyle = '#2e6b23';
+    // top edge
+    ctx.fillStyle = '#777';
     ctx.fillRect(p.x, p.y, p.w, 10);
   });
 }
@@ -185,10 +199,10 @@ function update() {
 
   platforms.forEach(p => {
     if (player.x > p.x && player.x < p.x + p.w) {
-      if (player.y + player.size/2 > p.y && player.y + player.size/2 < p.y + 40 && player.vy >= 0) {
+      if (player.y + player.size/2 > p.y && player.y + player.size/2 < p.y + 45 && player.vy >= 0) {
         player.y = p.y - player.size/2;
         player.vy = 0;
-        player.vx *= 0.5;
+        player.vx *= 0.55;
         player.onGround = true;
       }
     }
@@ -201,10 +215,10 @@ function update() {
     platforms.forEach(p => p.x -= diff);
   }
 
-  score = Math.max(score, Math.floor(player.x / 150));
+  score = Math.max(score, Math.floor(player.x / 160));
   document.getElementById('ui').innerText = score;
 
-  if (player.y > canvas.height + 200) {
+  if (player.y > canvas.height + 250) {
     document.getElementById('gameOver').style.display = 'block';
   }
 }
@@ -222,10 +236,7 @@ function loop() {
 }
 loop();
 
-
-// ---------------------------
-// CHARGE + JUMP (reduced power)
-// ---------------------------
+// charge + arc jump
 function startCharge(){
   if(player.onGround){
     charging = true;
@@ -236,40 +247,47 @@ function startCharge(){
 function releaseJump(){
   if(charging){
     charging = false;
-    player.vy = -8 - charge*0.15;  // reduced power
-    player.vx = 4 + charge*0.15;   // reduced power
+
+    let c = Math.min(charge, maxCharge);
+
+    // arc jump: more up than across, but not too high
+    player.vy = -9 - c * 0.18;  // vertical
+    player.vx = 2.2 + c * 0.10; // horizontal
+
     player.onGround = false;
   }
 }
 
-
-// ---------------------------
-// BUTTON CONTROLS
-// ---------------------------
+// buttons
 document.getElementById('downBtn').addEventListener('mousedown', startCharge);
 document.getElementById('downBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); });
 
 document.getElementById('upBtn').addEventListener('mouseup', releaseJump);
 document.getElementById('upBtn').addEventListener('touchend', (e)=>{ e.preventDefault(); releaseJump(); });
 
-
 // charge loop
 function chargeLoop(){
-  if(charging) charge += 1;
+  if(charging) charge += 0.7; // small increase per frame
   requestAnimationFrame(chargeLoop);
 }
 chargeLoop();
 
+// respawn without needing to die
+document.getElementById('respawnBtn').addEventListener('click', ()=> {
+  restart();
+  document.getElementById('gameOver').style.display = 'none';
+});
 
 // restart
 function restart(){
   score = 0;
-  player.x = 120;
-  player.y = canvas.height - 250;
+  player.x = 160;
+  player.y = canvas.height - 260;
   player.vx = 0;
   player.vy = 0;
+  charging = false;
+  charge = 0;
   createPlatforms();
-  document.getElementById('gameOver').style.display = 'none';
 }
 </script>
 

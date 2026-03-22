@@ -26,17 +26,29 @@
     text-shadow:0 3px 6px rgba(0,0,0,0.5);
   }
 
-  #gameOver {
+  #deathScreen {
     position:fixed;
     top:50%;
     left:50%;
     transform:translate(-50%,-50%);
     background:rgba(0,0,0,0.85);
-    color:white;
-    padding:30px;
+    padding:20px;
     border-radius:20px;
     text-align:center;
     display:none;
+  }
+
+  #deathScreen img {
+    width:200px;
+    margin-bottom:10px;
+  }
+
+  #deathScreen h1 {
+    color:red;
+    font-size:48px;
+    margin:0;
+    margin-bottom:10px;
+    font-weight:bold;
   }
 
   #controls {
@@ -81,9 +93,10 @@
 
 <button id="respawnBtn">↻</button>
 
-<div id="gameOver">
-  <h1>You Died</h1>
-  <button class="ctrlBtn" onclick="restart()">Try Again</button>
+<div id="deathScreen">
+  <img src="images/chick.webp">
+  <h1>U DIED LOL</h1>
+  <button class="ctrlBtn" onclick="restart()">Retry</button>
 </div>
 
 <div id="controls">
@@ -115,17 +128,17 @@ let score = 0;
 let gravity = 0.6;
 let charging = false;
 let charge = 0;
-let maxCharge = 45;
+let maxCharge = 60;
 
 const img = new Image();
 img.src = 'images/1000043615-removebg-preview.png';
 
 const player = {
   x: 200,
-  y: canvas.height - 500, // spawn ABOVE platforms
+  y: canvas.height - 500,
   vx: 0,
   vy: 0,
-  size: 150, // bigger bird
+  size: 150,
   onGround: true
 };
 
@@ -141,9 +154,9 @@ function createPlatforms() {
 
     platforms.push({
       x: x,
-      y: canvas.height - 300 - heightOffset, // higher platforms
+      y: canvas.height - 300 - heightOffset,
       w: width,
-      h: canvas.height // extends to bottom
+      h: canvas.height
     });
 
     x += width + gap;
@@ -152,9 +165,9 @@ function createPlatforms() {
 
 createPlatforms();
 
-// bottom-heavy squish with top moving down
+// squish
 function drawPlayer() {
-  let squish = charging ? Math.min(charge * 0.6, 32) : 0;
+  let squish = charging ? Math.min(charge * 0.7, 40) : 0;
 
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -164,7 +177,7 @@ function drawPlayer() {
   let bottomHeight = player.size * 0.45;
 
   let squishedBottom = bottomHeight - squish;
-  if (squishedBottom < 12) squishedBottom = 12;
+  if (squishedBottom < 10) squishedBottom = 10;
 
   let topShift = (bottomHeight - squishedBottom);
 
@@ -189,10 +202,10 @@ function drawPlayer() {
 
 function drawPlatforms() {
   platforms.forEach(p => {
-    ctx.fillStyle = '#3c8d2f'; // green
+    ctx.fillStyle = '#3c8d2f';
     ctx.fillRect(p.x, p.y, p.w, p.h);
 
-    ctx.fillStyle = '#2e6b23'; // darker top
+    ctx.fillStyle = '#2e6b23';
     ctx.fillRect(p.x, p.y, p.w, 12);
   });
 }
@@ -227,7 +240,7 @@ function update() {
   document.getElementById('ui').innerText = score;
 
   if (player.y > canvas.height + 250) {
-    document.getElementById('gameOver').style.display = 'block';
+    document.getElementById('deathScreen').style.display = 'block';
   }
 }
 
@@ -244,7 +257,7 @@ function loop() {
 }
 loop();
 
-// charge + arc jump
+// charge
 function startCharge(){
   if(player.onGround){
     charging = true;
@@ -252,25 +265,27 @@ function startCharge(){
   }
 }
 
+// release
 function releaseJump(){
   if(charging){
     charging = false;
 
     let c = Math.min(charge, maxCharge);
 
-    player.vy = -9 - c * 0.18;  // vertical arc
-    player.vx = 2.2 + c * 0.10; // horizontal arc
+    player.vy = -10 - c * 0.22;
+    player.vx = 2.5 + c * 0.12;
 
     player.onGround = false;
   }
 }
 
+// unspring
 function cancelCharge() {
   charging = false;
   charge = 0;
 }
 
-// button events
+// buttons
 document.getElementById('downBtn').addEventListener('mousedown', startCharge);
 document.getElementById('downBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); startCharge(); });
 
@@ -281,16 +296,18 @@ document.getElementById('cancelBtn').addEventListener('mousedown', cancelCharge)
 document.getElementById('cancelBtn').addEventListener('touchstart', (e)=>{ e.preventDefault(); cancelCharge(); });
 
 function chargeLoop(){
-  if(charging) charge += 0.6;
+  if(charging) charge += 0.7;
   requestAnimationFrame(chargeLoop);
 }
 chargeLoop();
 
+// respawn
 document.getElementById('respawnBtn').addEventListener('click', ()=> {
   restart();
-  document.getElementById('gameOver').style.display = 'none';
+  document.getElementById('deathScreen').style.display = 'none';
 });
 
+// restart
 function restart(){
   score = 0;
   player.x = 200;
@@ -300,6 +317,7 @@ function restart(){
   charging = false;
   charge = 0;
   createPlatforms();
+  document.getElementById('deathScreen').style.display = 'none';
 }
 </script>
 

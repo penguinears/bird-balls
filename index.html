@@ -11,11 +11,11 @@
 
   #ui {
     position:fixed;
-    top:15px;
+    top:10px;
     left:50%;
     transform:translateX(-50%);
     color:white;
-    font-size:26px;
+    font-size:40px;
     font-weight:bold;
     text-shadow:0 3px 6px rgba(0,0,0,0.5);
   }
@@ -57,7 +57,7 @@
 
 <body>
 
-<div id="ui">Score: 0</div>
+<div id="ui">0</div>
 
 <div id="gameOver">
   <h1>You Died</h1>
@@ -104,16 +104,16 @@ let platforms = [];
 function createPlatforms() {
   platforms = [];
   let x = 0;
-  for (let i = 0; i < 25; i++) {
-    let width = 180 + Math.random()*80;
-    let gap = 120 + Math.random()*120;
-    let heightOffset = Math.random()*120;
+  for (let i = 0; i < 40; i++) {
+    let width = 200 + Math.random()*100;
+    let gap = 200 + Math.random()*200; // bigger gaps
+    let heightOffset = Math.random()*150;
 
     platforms.push({
       x: x,
-      y: canvas.height - 180 - heightOffset,
+      y: canvas.height - 200 - heightOffset,
       w: width,
-      h: 20
+      h: canvas.height // goes all the way down
     });
 
     x += width + gap;
@@ -127,7 +127,7 @@ createPlatforms();
 // FIXED BOTTOM-HEAVY SQUISH
 // ---------------------------
 function drawPlayer() {
-  let squish = charging ? Math.min(charge / 10, 35) : 0;
+  let squish = charging ? Math.min(charge / 12, 30) : 0;
 
   ctx.save();
   ctx.translate(player.x, player.y);
@@ -139,11 +139,14 @@ function drawPlayer() {
   let squishedBottom = bottomHeight - squish;
   if (squishedBottom < 10) squishedBottom = 10;
 
+  // Move top half down when bottom compresses
+  let topShift = (bottomHeight - squishedBottom);
+
   // Top half
   ctx.drawImage(
     img,
     0, 0, img.width, img.height * 0.55,
-    -player.size/2, -player.size/2,
+    -player.size/2, -player.size/2 + topShift,
     player.size, topHeight
   );
 
@@ -152,7 +155,7 @@ function drawPlayer() {
     img,
     0, img.height * 0.55, img.width, img.height * 0.45,
     -player.size/2,
-    -player.size/2 + topHeight + (bottomHeight - squishedBottom),
+    -player.size/2 + topHeight + topShift,
     player.size,
     squishedBottom
   );
@@ -167,7 +170,7 @@ function drawPlatforms() {
     ctx.fillRect(p.x, p.y, p.w, p.h);
 
     ctx.fillStyle = '#2e6b23';
-    ctx.fillRect(p.x, p.y, p.w, 6);
+    ctx.fillRect(p.x, p.y, p.w, 10);
   });
 }
 
@@ -182,24 +185,24 @@ function update() {
 
   platforms.forEach(p => {
     if (player.x > p.x && player.x < p.x + p.w) {
-      if (player.y + player.size/2 > p.y && player.y + player.size/2 < p.y + 25 && player.vy >= 0) {
+      if (player.y + player.size/2 > p.y && player.y + player.size/2 < p.y + 40 && player.vy >= 0) {
         player.y = p.y - player.size/2;
         player.vy = 0;
-        player.vx *= 0.6;
+        player.vx *= 0.5;
         player.onGround = true;
       }
     }
   });
 
   // camera follow
-  if (player.x > canvas.width * 0.4) {
-    let diff = player.x - canvas.width * 0.4;
-    player.x = canvas.width * 0.4;
+  if (player.x > canvas.width * 0.35) {
+    let diff = player.x - canvas.width * 0.35;
+    player.x = canvas.width * 0.35;
     platforms.forEach(p => p.x -= diff);
   }
 
-  score = Math.max(score, Math.floor(player.x / 120));
-  document.getElementById('ui').innerText = 'Score: ' + score;
+  score = Math.max(score, Math.floor(player.x / 150));
+  document.getElementById('ui').innerText = score;
 
   if (player.y > canvas.height + 200) {
     document.getElementById('gameOver').style.display = 'block';
@@ -221,7 +224,7 @@ loop();
 
 
 // ---------------------------
-// CHARGE + JUMP
+// CHARGE + JUMP (reduced power)
 // ---------------------------
 function startCharge(){
   if(player.onGround){
@@ -233,8 +236,8 @@ function startCharge(){
 function releaseJump(){
   if(charging){
     charging = false;
-    player.vy = -12 - charge*0.25;
-    player.vx = 6 + charge*0.25;
+    player.vy = -8 - charge*0.15;  // reduced power
+    player.vx = 4 + charge*0.15;   // reduced power
     player.onGround = false;
   }
 }

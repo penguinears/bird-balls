@@ -136,7 +136,7 @@ function createPlatforms(){
     x+=w+gap;
   }
   // spawn on top of first platform
-  player.y=platforms[0].y-player.size-5; // <-- start slightly above platform
+  player.y=platforms[0].y-player.size-5; // slightly above
   player.x=platforms[0].x+platforms[0].w*0.3;
   player.vx=0;
   player.vy=0;
@@ -202,16 +202,16 @@ function update(){
 
   player.onGround=false;
 
-  // platform collision
+  // PLATFORM COLLISION (swept, full width)
   for(let p of platforms){
-    if(player.x>p.x&&player.x<p.x+p.w){
-      let feet=player.y+player.size/2;
-      let nextFeet=feet+player.vy;
-      if(player.vy>0&&feet<=p.y&&nextFeet>=p.y){
-        player.y=p.y-player.size/2;
-        player.vy=0;
-        player.vx*=0.55;
-        player.onGround=true;
+    if(player.x + player.size/2 > p.x && player.x - player.size/2 < p.x+p.w){
+      let feet = player.y + player.size/2;
+      let nextFeet = feet + player.vy;
+      if(player.vy > 0 && feet <= p.y && nextFeet >= p.y){
+        player.y = p.y - player.size/2;
+        player.vy = 0;
+        player.vx *= 0.55;
+        player.onGround = true;
         landed(p);
       }
     }
@@ -234,7 +234,7 @@ function update(){
     shakeX=0;shakeY=0;
   }
 
-  // death: ONLY if you fall off bottom AFTER first jump
+  // death: ONLY after first jump
   if(startedJumping && player.y - player.size/2 > canvas.height+50){
     dead=true;
     document.getElementById('deathScreen').style.display='flex';
@@ -292,6 +292,7 @@ function draw(){
 function loop(){update();draw();requestAnimationFrame(loop)}
 loop();
 
+// controls
 function pressDown(){
   if(player.onGround){
     charge+=1.1;

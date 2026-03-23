@@ -7,16 +7,27 @@
 <style>
 body{margin:0;overflow:hidden;background:black;touch-action:none}
 canvas{display:block}
-#ui{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:white;font-size:32px;font-weight:bold;pointer-events:none}
-#skipMsg{position:fixed;top:50px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:20px;font-weight:bold;pointer-events:none}
-#controls{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:14px}
+#ui{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:white;font-size:32px;font-weight:bold;pointer-events:none;z-index:5}
+#skipMsg{position:fixed;top:50px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:20px;font-weight:bold;pointer-events:none;z-index:5}
+#controls{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:14px;z-index:5}
 .ctrlBtn{padding:12px 18px;font-size:18px;border:3px solid #1e3050;border-radius:12px;background:white;color:black}
-#respawnBtn{position:fixed;top:10px;left:10px;padding:8px 12px;font-size:16px;border:3px solid #1e3050;border-radius:10px;background:white;color:black}
-#deathScreen{position:fixed;top:0;left:0;width:100vw;height:100vh;background:black;display:none;justify-content:center;align-items:center;flex-direction:column;z-index:10}
+#respawnBtn{position:fixed;top:10px;left:10px;padding:8px 12px;font-size:16px;border:3px solid #1e3050;border-radius:10px;background:white;color:black;z-index:5}
+#deathScreen{
+  position:fixed;top:0;left:0;width:100vw;height:100vh;
+  background:black;display:none;justify-content:center;align-items:center;flex-direction:column;
+  z-index:20;
+}
 #deathScreen img{width:100%;height:100%;object-fit:cover;opacity:.7;position:absolute}
-#deathScreen h1{position:relative;color:red;font-size:60px;font-weight:bold;margin-bottom:20px}
-#deathScreen button{position:relative;padding:16px 32px;font-size:24px;border:4px solid #1e3050;border-radius:16px;background:white;color:black}
-#rotate{position:fixed;top:0;left:0;width:100vw;height:100vh;background:black;color:white;font-size:30px;display:none;justify-content:center;align-items:center;text-align:center;z-index:20}
+#deathScreen h1{position:relative;color:red;font-size:60px;font-weight:bold;margin-bottom:20px;z-index:21}
+#deathScreen button{
+  position:relative;padding:16px 32px;font-size:24px;
+  border:4px solid #1e3050;border-radius:16px;background:white;color:black;z-index:21
+}
+#rotate{
+  position:fixed;top:0;left:0;width:100vw;height:100vh;
+  background:black;color:white;font-size:30px;
+  display:none;justify-content:center;align-items:center;text-align:center;z-index:30
+}
 </style>
 </head>
 <body>
@@ -89,8 +100,6 @@ img.src='images/1000043615-removebg-preview.png';
 let score=0;
 let charge=0;
 let maxCharge=80;
-let targetSquish=0;
-let currentSquish=0;
 let holdingDown=false;
 let holdingUp=false;
 let shakePower=0;
@@ -224,7 +233,7 @@ function update(){
     shakeX=0;shakeY=0;
   }
 
-  // death: only if you miss and fall off bottom AFTER starting
+  // death: ONLY if you fall off bottom AFTER starting
   if(hasStarted && player.y - player.size/2 > canvas.height+50){
     dead=true;
     document.getElementById('deathScreen').style.display='flex';
@@ -289,18 +298,14 @@ loop();
 // controls
 function pressDown(){
   if(player.onGround){
-    targetSquish+=1.2+charge*0.03;
     charge+=1.1;
-    if(targetSquish>70)targetSquish=70;
     if(charge>maxCharge)charge=maxCharge;
   }
 }
 
 function pressUp(){
   if(player.onGround){
-    targetSquish-=3;
     charge-=2;
-    if(targetSquish<0)targetSquish=0;
     if(charge<0)charge=0;
   }
 }
@@ -315,7 +320,6 @@ function releaseJump(){
     player.vy=vy;
     player.vx=vx;
     player.onGround=false;
-    targetSquish=0;
     charge=0;
   }
 }
@@ -353,8 +357,6 @@ function restart(){
   skipMsg='';
   skipTimer=0;
   charge=0;
-  targetSquish=0;
-  currentSquish=0;
   shakePower=0;
   particles=[];
   biome=biomes[Math.floor(Math.random()*biomes.length)];

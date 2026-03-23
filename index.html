@@ -2,14 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Bird Balls</title>
 
-<link rel="icon" type="image/png" href="images/1000043615-removebg-preview.png">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 <style>
-body{margin:0;font-family:Arial;overflow:hidden;background:linear-gradient(#87CEEB,#cfefff)}
+body{margin:0;overflow:hidden;background:linear-gradient(#87CEEB,#cfefff)}
 canvas{display:block}
 
 #ui{
@@ -20,62 +17,18 @@ transform:translateX(-50%);
 color:white;
 font-size:34px;
 font-weight:bold;
-text-shadow:0 3px 6px rgba(0,0,0,0.5);
-pointer-events:none;
 }
 
 #deathScreen{
 position:fixed;
-top:0;
-left:0;
-width:100vw;
-height:100vh;
+top:0;left:0;
+width:100%;height:100%;
 background:black;
 display:none;
 justify-content:center;
 align-items:center;
 flex-direction:column;
-}
-
-#deathScreen img{
-width:100%;
-height:100%;
-object-fit:cover;
-position:absolute;
-top:0;
-left:0;
-opacity:.7;
-}
-
-#deathScreen h1{
-position:relative;
-color:red;
-font-size:60px;
-margin-bottom:18px;
-}
-
-#deathScreen button{
-position:relative;
-padding:16px 32px;
-font-size:24px;
-border-radius:16px;
-background:white;
-}
-
-#controls{
-position:fixed;
-bottom:10px;
-left:50%;
-transform:translateX(-50%);
-display:flex;
-gap:16px;
-}
-
-.ctrlBtn{
-padding:12px 18px;
-font-size:20px;
-border-radius:14px;
-background:white;
+color:white;
 }
 </style>
 </head>
@@ -85,15 +38,8 @@ background:white;
 <div id="ui">0</div>
 
 <div id="deathScreen">
-  <img src="images/chick.webp">
-  <h1>U DIED LOL</h1>
-  <button onclick="restart()">Retry</button>
-</div>
-
-<div id="controls">
-  <button id="downBtn" class="ctrlBtn">↓</button>
-  <button id="upBtn" class="ctrlBtn">↑</button>
-  <button id="releaseBtn" class="ctrlBtn">RELEASE</button>
+<h1>U DIED LOL</h1>
+<button onclick="restart()">Retry</button>
 </div>
 
 <canvas id="game"></canvas>
@@ -110,12 +56,9 @@ resize();
 addEventListener('resize',resize);
 
 /* ========= CORE ========= */
-let score=0,gravity=.5,charge=0,targetSquish=0,currentSquish=0;
-let holdingDown=false,holdingUp=false,shakeX=0,shakeY=0,shakePower=0;
-let particles=[],t=0;
-
-const img=new Image();
-img.src='images/1000043615-removebg-preview.png';
+let score=0;
+let gravity=0.4;
+let charge=0;
 
 const player={
   x:220,
@@ -138,127 +81,84 @@ function createPlatforms(){
     let gap=180+Math.random()*180;
     let y=canvas.height-260-Math.random()*120;
 
-    platforms.push({x,y,w,h:canvas.height});
+    platforms.push({x,y,w});
     x+=w+gap;
   }
 
   player.y=platforms[0].y-player.size/2;
   player.onGround=true;
 }
-
 createPlatforms();
 
-/* ========= EFFECTS ========= */
-function spawnDust(x,y){
-  for(let i=0;i<8;i++){
-    particles.push({
-      x,y,
-      vx:(Math.random()-.5)*4,
-      vy:-Math.random()*2,
-      life:20
-    });
-  }
-}
-
-function drawParticles(){
-  particles.forEach(p=>{
-    ctx.fillStyle='rgba(255,255,255,'+(p.life/20)+')';
-    ctx.fillRect(p.x,p.y,6,6);
-    p.x+=p.vx;
-    p.y+=p.vy;
-    p.life--;
-  });
-  particles=particles.filter(p=>p.life>0);
-}
-
 /* ========= DRAW ========= */
-function drawPlayer(){
-  currentSquish+=(targetSquish-currentSquish)*.25;
-
-  let topH=player.size*.55;
-  let botH=player.size*.45;
-  let squish=Math.max(10,botH-currentSquish);
-  let shift=(botH-squish);
-
-  ctx.save();
-  ctx.translate(player.x,player.y);
-  ctx.scale(-1,1);
-
-  ctx.drawImage(img,0,0,img.width,img.height*.55,
-    -player.size/2,-player.size/2+shift,player.size,topH);
-
-  ctx.drawImage(img,0,img.height*.55,img.width,img.height*.45,
-    -player.size/2,-player.size/2+topH+shift,player.size,squish);
-
-  ctx.restore();
-}
-
 function drawPlatforms(){
   platforms.forEach(p=>{
     ctx.fillStyle='#3c8d2f';
-    ctx.fillRect(p.x,p.y,p.w,p.h);
+    ctx.fillRect(p.x,p.y,p.w,canvas.height);
 
     ctx.fillStyle='#2e6b23';
     ctx.fillRect(p.x,p.y,p.w,12);
   });
 }
 
-/* ========= WATER ========= */
+function drawPlayer(){
+  ctx.fillStyle='white';
+  ctx.beginPath();
+  ctx.arc(player.x,player.y,player.size/2,0,Math.PI*2);
+  ctx.fill();
+}
+
 function drawWater(){
   let base=canvas.height-40;
 
   ctx.fillStyle='#1e88e5';
-
-  ctx.beginPath();
-  ctx.moveTo(0,canvas.height);
-  ctx.lineTo(0,base);
-
-  for(let x=0;x<=canvas.width;x+=20){
-    let y=base+Math.sin(t+x*0.02)*15;
-    ctx.lineTo(x,y);
-  }
-
-  ctx.lineTo(canvas.width,canvas.height);
-  ctx.closePath();
-  ctx.fill();
+  ctx.fillRect(0,base,canvas.width,40);
 }
 
 /* ========= UPDATE ========= */
 function update(){
-  t+=0.04;
 
+  // physics
   if(!player.onGround){
     player.vy+=gravity;
+    if(player.vy>18)player.vy=18; // terminal velocity
+
     player.x+=player.vx;
     player.y+=player.vy;
-    player.vx*=0.99;
   }
 
   player.onGround=false;
 
+  /* ===== FIXED COLLISION ===== */
   platforms.forEach(p=>{
-    if(player.x>p.x && player.x<p.x+p.w){
-      let feet=player.y+player.size/2;
-      let nextFeet=feet+player.vy;
+    const left=p.x;
+    const right=p.x+p.w;
 
-      if(feet<=p.y && nextFeet>=p.y && player.vy>2){
+    const prevY=player.y-player.vy;
+    const prevFeet=prevY+player.size/2;
+    const currFeet=player.y+player.size/2;
+
+    if(player.x+player.size*0.3>left && player.x-player.size*0.3<right){
+
+      if(prevFeet<=p.y && currFeet>=p.y){
         player.y=p.y-player.size/2;
         player.vy=0;
         player.vx*=0.6;
         player.onGround=true;
 
-        spawnDust(player.x,p.y);
         score+=5;
       }
     }
   });
 
-  if(player.x>canvas.width*.3){
-    let d=player.x-canvas.width*.3;
-    player.x=canvas.width*.3;
+  // camera
+  if(player.x>canvas.width*0.3){
+    let d=player.x-canvas.width*0.3;
+    player.x=canvas.width*0.3;
     platforms.forEach(p=>p.x-=d);
   }
 
+  // death
   if(player.y>canvas.height-20){
     document.getElementById('deathScreen').style.display='flex';
   }
@@ -271,7 +171,6 @@ function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   drawPlatforms();
-  drawParticles();
   drawPlayer();
   drawWater();
 }
@@ -284,52 +183,16 @@ function loop(){
 loop();
 
 /* ========= CONTROLS ========= */
-function pressDown(){
-  if(player.onGround){
-    targetSquish+=1.5;
-    charge+=1.2;
-  }
-}
-
-function pressUp(){
-  if(player.onGround){
-    targetSquish-=3;
-    charge-=2;
-  }
-}
-
-function releaseJump(){
-  if(player.onGround && charge>0){
-    player.vy=-14-charge*.35;
-    player.vx=4+charge*.2;
-
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space' && player.onGround){
+    player.vy=-14-charge*0.3;
+    player.vx=4+charge*0.2;
     player.onGround=false;
-    targetSquish=0;
     charge=0;
   }
-}
 
-function handleHeldButtons(){
-  if(holdingDown)pressDown();
-  if(holdingUp)pressUp();
-  requestAnimationFrame(handleHeldButtons);
-}
-handleHeldButtons();
-
-/* ========= BUTTONS ========= */
-const downBtn=document.getElementById('downBtn');
-const upBtn=document.getElementById('upBtn');
-const releaseBtn=document.getElementById('releaseBtn');
-
-downBtn.onmousedown=()=>holdingDown=true;
-downBtn.onmouseup=()=>holdingDown=false;
-downBtn.onmouseleave=()=>holdingDown=false;
-
-upBtn.onmousedown=()=>holdingUp=true;
-upBtn.onmouseup=()=>holdingUp=false;
-upBtn.onmouseleave=()=>holdingUp=false;
-
-releaseBtn.onmousedown=releaseJump;
+  if(e.code==='ArrowDown') charge+=1;
+});
 
 /* ========= RESTART ========= */
 function restart(){

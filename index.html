@@ -109,6 +109,7 @@ let lastPlatformIndex=-1;
 let t=0;
 let hasStarted=false;
 let dead=false;
+let startedJumping=false; // ADDED: track first jump
 
 // PLAYER
 const player={
@@ -142,6 +143,7 @@ function createPlatforms(){
   player.onGround=true;
   hasStarted=false;
   dead=false;
+  startedJumping=false; // reset jump tracker
 }
 createPlatforms();
 
@@ -233,8 +235,8 @@ function update(){
     shakeX=0;shakeY=0;
   }
 
-  // death: ONLY if you fall off bottom AFTER starting
-  if(hasStarted && player.y - player.size/2 > canvas.height+50){
+  // death: ONLY if you fall off bottom AFTER first jump
+  if(startedJumping && player.y - player.size/2 > canvas.height+50){
     dead=true;
     document.getElementById('deathScreen').style.display='flex';
   }
@@ -313,6 +315,7 @@ function pressUp(){
 function releaseJump(){
   if(player.onGround&&charge>0){
     hasStarted=true;
+    startedJumping=true; // track first jump
     sndLaunch.currentTime=0;
     sndLaunch.play();
     let vy=-12-charge*0.35;

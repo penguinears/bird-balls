@@ -42,22 +42,29 @@ canvas{display:block}
 <canvas id="game"></canvas>
 
 <script>
+/* ORIENTATION */
 function checkOrientation(){
-  if(window.innerHeight>window.innerWidth)document.getElementById('rotate').style.display='flex';
-  else document.getElementById('rotate').style.display='none';
+  if(window.innerHeight>window.innerWidth)
+    document.getElementById('rotate').style.display='flex';
+  else
+    document.getElementById('rotate').style.display='none';
 }
 checkOrientation();
 addEventListener('resize',checkOrientation);
 
+/* FULLSCREEN */
 document.body.addEventListener('click',()=>{
-  if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen();
+  if(document.documentElement.requestFullscreen)
+    document.documentElement.requestFullscreen();
 },{once:true});
 
+/* CANVAS */
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
 resize();addEventListener('resize',resize);
 
+/* BIOMES */
 const biomes=['grass','desert','lava','water','rock'];
 let biome=biomes[Math.floor(Math.random()*biomes.length)];
 
@@ -70,12 +77,15 @@ function setBackground(){
 }
 setBackground();
 
+/* SOUNDS */
 const sndLaunch=new Audio('sounds/humordome-boing-boing-bounce-454474.mp3');
 const sndLand=new Audio('sounds/playzz-thud-491559 (1).mp3');
 
+/* BIRD IMAGE */
 const img=new Image();
 img.src='images/1000043615-removebg-preview.png';
 
+/* GAME STATE */
 let score=0;
 let charge=0;
 let maxCharge=80;
@@ -88,7 +98,9 @@ let shakeX=0,shakeY=0;
 let skipMsg='',skipTimer=0;
 let lastPlatformIndex=-1;
 let t=0;
+let hasStarted=false;
 
+/* PLAYER */
 const player={
   x:300,
   y:0,
@@ -98,17 +110,17 @@ const player={
   onGround:true
 };
 
+/* PLATFORMS */
 let platforms=[];
-
 function createPlatforms(){
   platforms=[];
   let x=0;
-  for(let i=0;i<60;i++){
-    let w=220+Math.random()*140;
-    let gap=220+Math.random()*220;
-    let hOff=Math.random()*140;
+  for(let i=0;i<80;i++){
+    let w=240+Math.random()*160;
+    let gap=240+Math.random()*260;
+    let hOff=Math.random()*160;
     let topY=canvas.height-260-hOff;
-    platforms.push({x:x,y:topY,w:w});
+    platforms.push({x:x,y:topY,w:w,index:i});
     x+=w+gap;
   }
   player.y=platforms[0].y-player.size/2-10;
@@ -116,6 +128,7 @@ function createPlatforms(){
 }
 createPlatforms();
 
+/* PARTICLES */
 let particles=[];
 function spawnDust(x,y){
   for(let i=0;i<8;i++){
@@ -123,8 +136,10 @@ function spawnDust(x,y){
   }
 }
 
+/* SHAKE */
 function addShake(p){shakePower=Math.max(shakePower,p)}
 
+/* LIQUID */
 function drawLiquid(){
   if(biome!=='lava'&&biome!=='water')return;
   let color=biome==='lava'?'#ff2b1a':'#1e88e5';
@@ -140,6 +155,7 @@ function drawLiquid(){
   ctx.fill();
 }
 
+/* LANDING */
 function landed(p){
   sndLaunch.pause();
   sndLaunch.currentTime=0;
@@ -147,15 +163,18 @@ function landed(p){
   sndLand.play();
   spawnDust(player.x,p.y);
   addShake(6);
+
   let skipped=p.index-lastPlatformIndex-1;
   if(skipped<0)skipped=0;
   let gained=5+skipped*5;
   score+=gained;
   lastPlatformIndex=p.index;
+
   skipMsg='Skipped '+skipped+' (+ '+gained+')';
   skipTimer=60;
 }
 
+/* UPDATE */
 function update(){
   t+=0.03;
 
@@ -167,9 +186,8 @@ function update(){
 
   player.onGround=false;
 
-  for(let i=0;i<platforms.length;i++){
-    let p=platforms[i];
-    p.index=i;
+  /* SWEPT COLLISION */
+  for(let p of platforms){
     if(player.x>p.x&&player.x<p.x+p.w){
       let feet=player.y+player.size/2;
       let nextFeet=feet+player.vy;
@@ -183,12 +201,12 @@ function update(){
     }
   }
 
-  if(player.x>canvas.width*0.35){
-    let d=player.x-canvas.width*0.35;
-    player.x=canvas.width*0.35;
-    platforms.forEach(p=>p.x-=d);
-  }
+  /* CAMERA FOLLOWS BIRD */
+  let camY = player.y - canvas.height*0.4;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.translate(0,-camY);
 
+  /* SHAKE */
   if(shakePower>0.2){
     shakeX=(Math.random()-.5)*shakePower;
     shakeY=(Math.random()-.5)*shakePower;
@@ -198,7 +216,8 @@ function update(){
     shakeX=0;shakeY=0;
   }
 
-  if(player.y>canvas.height+200){
+  /* DEATH */
+  if(hasStarted && player.y > canvas.height + 600){
     document.getElementById('deathScreen').style.display='flex';
   }
 
@@ -219,6 +238,7 @@ function update(){
   particles=particles.filter(p=>p.life>0);
 }
 
+/* DRAW */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -227,26 +247,23 @@ function draw(){
   ctx.save();
   ctx.translate(shakeX,shakeY);
 
-  platforms.forEach(p=>{
-    let h=canvas.height-p.y;
-    if(biome==='grass'||biome==='water'){
-      ctx.fillStyle='#3c8d2f';
-    }else if(biome==='desert'){
-      ctx.fillStyle='#d8b84f';
-    }else if(biome==='lava'){
-      ctx.fillStyle='#ff7b1a';
-    }else if(biome==='rock'){
-      ctx.fillStyle='#666666';
-    }
+  /* PLATFORMS FULL HEIGHT */
+  for(let p of platforms){
+    let h=canvas.height*2; 
+    if(biome==='grass'||biome==='water')ctx.fillStyle='#3c8d2f';
+    else if(biome==='desert')ctx.fillStyle='#d8b84f';
+    else if(biome==='lava')ctx.fillStyle='#ff7b1a';
+    else if(biome==='rock')ctx.fillStyle='#666666';
     ctx.fillRect(p.x,p.y,p.w,h);
-  });
+  }
 
+  /* PARTICLES */
   particles.forEach(p=>{
     ctx.fillStyle='rgba(255,255,255,'+(p.life/20)+')';
     ctx.fillRect(p.x,p.y,6,6);
   });
 
-  currentSquish+=(targetSquish-currentSquish)*0.25;
+  /* BIRD */
   ctx.save();
   ctx.translate(player.x,player.y);
   ctx.drawImage(img,-player.size/2,-player.size/2,player.size,player.size);
@@ -255,9 +272,11 @@ function draw(){
   ctx.restore();
 }
 
+/* LOOP */
 function loop(){update();draw();requestAnimationFrame(loop)}
 loop();
 
+/* CONTROLS */
 function pressDown(){
   if(player.onGround){
     targetSquish+=1.2+charge*0.03;
@@ -278,6 +297,7 @@ function pressUp(){
 
 function releaseJump(){
   if(player.onGround&&charge>0){
+    hasStarted=true;
     sndLaunch.currentTime=0;
     sndLaunch.play();
     let vy=-12-charge*0.35;
@@ -297,26 +317,20 @@ function holdLoop(){
 }
 holdLoop();
 
-const downBtn=document.getElementById('downBtn');
-const upBtn=document.getElementById('upBtn');
-const releaseBtn=document.getElementById('releaseBtn');
-
 downBtn.onmousedown=()=>holdingDown=true;
 downBtn.onmouseup=()=>holdingDown=false;
-downBtn.onmouseleave=()=>holdingDown=false;
 downBtn.ontouchstart=e=>{e.preventDefault();holdingDown=true};
 downBtn.ontouchend=()=>holdingDown=false;
 
 upBtn.onmousedown=()=>holdingUp=true;
 upBtn.onmouseup=()=>holdingUp=false;
-upBtn.onmouseleave=()=>holdingUp=false;
 upBtn.ontouchstart=e=>{e.preventDefault();holdingUp=true};
 upBtn.ontouchend=()=>holdingUp=false;
 
 releaseBtn.onmousedown=releaseJump;
 releaseBtn.ontouchstart=e=>{e.preventDefault();releaseJump()};
 
-document.getElementById('respawnBtn').onclick=restart;
+respawnBtn.onclick=restart;
 
 function restart(){
   score=0;
@@ -328,6 +342,7 @@ function restart(){
   currentSquish=0;
   shakePower=0;
   particles=[];
+  hasStarted=false;
   biome=biomes[Math.floor(Math.random()*biomes.length)];
   setBackground();
   createPlatforms();

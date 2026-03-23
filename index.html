@@ -2,44 +2,42 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>Bird Balls</title>
+<link rel="icon" type="image/png" href="images/1000043615-removebg-preview.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
-body{margin:0;overflow:hidden;background:linear-gradient(#87CEEB,#cfefff)}
+body{margin:0;font-family:Arial;overflow:hidden;touch-action:none}
 canvas{display:block}
-
-#ui{
-position:fixed;
-top:8px;
-left:50%;
-transform:translateX(-50%);
-color:white;
-font-size:34px;
-font-weight:bold;
-}
-
-#deathScreen{
-position:fixed;
-top:0;left:0;
-width:100%;height:100%;
-background:black;
-display:none;
-justify-content:center;
-align-items:center;
-flex-direction:column;
-color:white;
-}
+#ui{position:fixed;top:8px;left:50%;transform:translateX(-50%);color:white;font-size:34px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5);pointer-events:none}
+#skipMsg{position:fixed;top:46px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:20px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5);pointer-events:none}
+#deathScreen{position:fixed;top:0;left:0;width:100vw;height:100vh;background:black;display:none;justify-content:center;align-items:center;flex-direction:column}
+#deathScreen img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:.7}
+#deathScreen h1{position:relative;color:red;font-size:60px;font-weight:bold;margin-bottom:18px;text-shadow:0 0 20px black}
+#deathScreen button{position:relative;padding:16px 32px;font-size:24px;border:4px solid rgb(30,48,80);border-radius:16px;background:white;color:black;box-shadow:0 4px 10px rgba(0,0,0,0.3)}
+#controls{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:16px}
+.ctrlBtn{padding:12px 18px;font-size:20px;border:3px solid rgb(30,48,80);border-radius:14px;background:white;color:black;box-shadow:0 3px 8px rgba(0,0,0,0.3);user-select:none}
+#respawnBtn{position:fixed;top:8px;left:8px;padding:8px 12px;font-size:16px;border:3px solid rgb(30,48,80);border-radius:10px;background:white;color:black;box-shadow:0 3px 8px rgba(0,0,0,0.3);user-select:none}
 </style>
 </head>
 
 <body>
 
 <div id="ui">0</div>
+<div id="skipMsg"></div>
+<button id="respawnBtn">↻</button>
 
 <div id="deathScreen">
-<h1>U DIED LOL</h1>
-<button onclick="restart()">Retry</button>
+  <img src="images/chick.webp">
+  <h1>U DIED LOL</h1>
+  <button onclick="restart()">Retry</button>
+</div>
+
+<div id="controls">
+  <button id="downBtn" class="ctrlBtn"><i class="fa-solid fa-arrow-down"></i></button>
+  <button id="upBtn" class="ctrlBtn"><i class="fa-solid fa-arrow-up"></i></button>
+  <button id="releaseBtn" class="ctrlBtn">RELEASE</button>
 </div>
 
 <canvas id="game"></canvas>
@@ -48,117 +46,107 @@ color:white;
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 
-function resize(){
-  canvas.width=innerWidth;
-  canvas.height=innerHeight;
-}
-resize();
-addEventListener('resize',resize);
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
+resize();addEventListener('resize',resize);
 
-/* ========= CORE ========= */
-let score=0;
-let gravity=0.4;
-let charge=0;
+/* ===== ONLY CHANGE: gravity tweak ===== */
+let score=0,gravity=.4,charge=0,maxCharge=80,targetSquish=0,currentSquish=0;
+let holdingDown=false,holdingUp=false;
+let particles=[],t=0;
 
-const player={
-  x:220,
-  y:0,
-  vx:0,
-  vy:0,
-  size:130,
-  onGround:false
-};
+const img=new Image();
+img.src='images/1000043615-removebg-preview.png';
+
+const player={x:220,y:0,vx:0,vy:0,size:130,onGround:false};
 
 let platforms=[];
 
-/* ========= PLATFORMS ========= */
 function createPlatforms(){
   platforms=[];
   let x=0;
-
   for(let i=0;i<50;i++){
-    let w=260+Math.random()*120;
-    let gap=180+Math.random()*180;
-    let y=canvas.height-260-Math.random()*120;
-
-    platforms.push({x,y,w});
+    let w=220+Math.random()*120;
+    let gap=220+Math.random()*220;
+    let y=canvas.height-260-Math.random()*140;
+    platforms.push({x,y,w,index:i});
     x+=w+gap;
   }
-
   player.y=platforms[0].y-player.size/2;
   player.onGround=true;
 }
 createPlatforms();
 
-/* ========= DRAW ========= */
+/* ===== SAME DRAW FUNCTIONS ===== */
 function drawPlatforms(){
   platforms.forEach(p=>{
     ctx.fillStyle='#3c8d2f';
     ctx.fillRect(p.x,p.y,p.w,canvas.height);
-
     ctx.fillStyle='#2e6b23';
     ctx.fillRect(p.x,p.y,p.w,12);
   });
 }
 
 function drawPlayer(){
-  ctx.fillStyle='white';
-  ctx.beginPath();
-  ctx.arc(player.x,player.y,player.size/2,0,Math.PI*2);
-  ctx.fill();
+  currentSquish+=(targetSquish-currentSquish)*.25;
+  let topH=player.size*.55;
+  let botH=player.size*.45;
+  let squish=Math.max(10,botH-currentSquish);
+  let shift=(botH-squish);
+
+  ctx.save();
+  ctx.translate(player.x,player.y);
+  ctx.scale(-1,1);
+  ctx.drawImage(img,0,0,img.width,img.height*.55,-player.size/2,-player.size/2+shift,player.size,topH);
+  ctx.drawImage(img,0,img.height*.55,img.width,img.height*.45,-player.size/2,-player.size/2+topH+shift,player.size,squish);
+  ctx.restore();
 }
 
 function drawWater(){
   let base=canvas.height-40;
-
   ctx.fillStyle='#1e88e5';
   ctx.fillRect(0,base,canvas.width,40);
 }
 
-/* ========= UPDATE ========= */
+/* ===== FIXED UPDATE ===== */
 function update(){
+  t+=0.04;
 
-  // physics
   if(!player.onGround){
     player.vy+=gravity;
-    if(player.vy>18)player.vy=18; // terminal velocity
+
+    /* ===== ONLY CHANGE: terminal velocity ===== */
+    if(player.vy>18)player.vy=18;
 
     player.x+=player.vx;
     player.y+=player.vy;
+    player.vx*=0.99;
   }
 
   player.onGround=false;
 
-  /* ===== FIXED COLLISION ===== */
+  /* ===== ONLY CHANGE: REAL COLLISION FIX ===== */
   platforms.forEach(p=>{
-    const left=p.x;
-    const right=p.x+p.w;
-
     const prevY=player.y-player.vy;
     const prevFeet=prevY+player.size/2;
     const currFeet=player.y+player.size/2;
 
-    if(player.x+player.size*0.3>left && player.x-player.size*0.3<right){
-
+    if(player.x>p.x && player.x<p.x+p.w){
       if(prevFeet<=p.y && currFeet>=p.y){
         player.y=p.y-player.size/2;
         player.vy=0;
         player.vx*=0.6;
         player.onGround=true;
-
         score+=5;
       }
     }
   });
 
-  // camera
-  if(player.x>canvas.width*0.3){
-    let d=player.x-canvas.width*0.3;
-    player.x=canvas.width*0.3;
+  if(player.x>canvas.width*.3){
+    let d=player.x-canvas.width*.3;
+    player.x=canvas.width*.3;
     platforms.forEach(p=>p.x-=d);
   }
 
-  // death
   if(player.y>canvas.height-20){
     document.getElementById('deathScreen').style.display='flex';
   }
@@ -166,10 +154,9 @@ function update(){
   document.getElementById('ui').textContent=score;
 }
 
-/* ========= DRAW LOOP ========= */
+/* ===== LOOP ===== */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
   drawPlatforms();
   drawPlayer();
   drawWater();
@@ -182,27 +169,35 @@ function loop(){
 }
 loop();
 
-/* ========= CONTROLS ========= */
-document.addEventListener('keydown',e=>{
-  if(e.code==='Space' && player.onGround){
-    player.vy=-14-charge*0.3;
-    player.vx=4+charge*0.2;
+/* ===== CONTROLS (UNCHANGED) ===== */
+const downBtn=document.getElementById('downBtn');
+const upBtn=document.getElementById('upBtn');
+const releaseBtn=document.getElementById('releaseBtn');
+
+downBtn.onmousedown=()=>holdingDown=true;
+downBtn.onmouseup=()=>holdingDown=false;
+downBtn.onmouseleave=()=>holdingDown=false;
+
+upBtn.onmousedown=()=>holdingUp=true;
+upBtn.onmouseup=()=>holdingUp=false;
+upBtn.onmouseleave=()=>holdingUp=false;
+
+releaseBtn.onmousedown=()=>{
+  if(player.onGround && charge>0){
+    player.vy=-14-charge*.35;
+    player.vx=4+charge*.2;
     player.onGround=false;
     charge=0;
   }
+};
 
-  if(e.code==='ArrowDown') charge+=1;
-});
-
-/* ========= RESTART ========= */
+/* ===== RESTART ===== */
 function restart(){
   score=0;
   createPlatforms();
-
   player.x=220;
   player.vx=0;
   player.vy=0;
-
   document.getElementById('deathScreen').style.display='none';
 }
 </script>

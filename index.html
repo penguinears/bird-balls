@@ -109,7 +109,7 @@ let lastPlatformIndex=-1;
 let t=0;
 let hasStarted=false;
 let dead=false;
-let startedJumping=false; // ADDED: track first jump
+let startedJumping=false;
 
 // PLAYER
 const player={
@@ -136,14 +136,14 @@ function createPlatforms(){
     x+=w+gap;
   }
   // spawn on top of first platform
-  player.y=platforms[0].y-player.size/2-5;
+  player.y=platforms[0].y-player.size-5; // <-- start slightly above platform
   player.x=platforms[0].x+platforms[0].w*0.3;
   player.vx=0;
   player.vy=0;
   player.onGround=true;
   hasStarted=false;
   dead=false;
-  startedJumping=false; // reset jump tracker
+  startedJumping=false;
 }
 createPlatforms();
 
@@ -157,7 +157,6 @@ function spawnDust(x,y){
 
 function addShake(p){shakePower=Math.max(shakePower,p)}
 
-// LIQUID (bottom of screen)
 function drawLiquid(){
   if(biome!=='lava'&&biome!=='water')return;
   let color=biome==='lava'?'#ff2b1a':'#1e88e5';
@@ -203,7 +202,7 @@ function update(){
 
   player.onGround=false;
 
-  // platform collision (swept)
+  // platform collision
   for(let p of platforms){
     if(player.x>p.x&&player.x<p.x+p.w){
       let feet=player.y+player.size/2;
@@ -262,13 +261,11 @@ function draw(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // bottom lava/water
   drawLiquid();
 
   ctx.save();
   ctx.translate(shakeX,shakeY);
 
-  // platforms: from topY to bottom of screen
   for(let p of platforms){
     let h=canvas.height-p.y;
     if(h<0)h=0;
@@ -279,13 +276,11 @@ function draw(){
     ctx.fillRect(p.x,p.y,p.w,h);
   }
 
-  // particles
   particles.forEach(p=>{
     ctx.fillStyle='rgba(255,255,255,'+(p.life/20)+')';
     ctx.fillRect(p.x,p.y,6,6);
   });
 
-  // bird
   ctx.save();
   ctx.translate(player.x,player.y);
   ctx.drawImage(img,-player.size/2,-player.size/2,player.size,player.size);
@@ -297,7 +292,6 @@ function draw(){
 function loop(){update();draw();requestAnimationFrame(loop)}
 loop();
 
-// controls
 function pressDown(){
   if(player.onGround){
     charge+=1.1;
@@ -315,7 +309,7 @@ function pressUp(){
 function releaseJump(){
   if(player.onGround&&charge>0){
     hasStarted=true;
-    startedJumping=true; // track first jump
+    startedJumping=true;
     sndLaunch.currentTime=0;
     sndLaunch.play();
     let vy=-12-charge*0.35;

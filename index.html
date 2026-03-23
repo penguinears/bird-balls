@@ -106,16 +106,20 @@ let platforms=[];
 function createPlatforms(){
   platforms=[];
   let x=0;
+  const midY = canvas.height*0.5;
   for(let i=0;i<80;i++){
     let w=240+Math.random()*160;
     let gap=240+Math.random()*260;
-    let hOff=Math.random()*160;
-    let topY=canvas.height-260-hOff;
+    let hOff=(Math.random()-0.5)*120;
+    let topY=midY+hOff;
     platforms.push({x:x,y:topY,w:w,index:i});
     x+=w+gap;
   }
-  player.y=platforms[0].y-player.size/2-10;
+  player.y=platforms[0].y-player.size/2-5;
   player.x=platforms[0].x+platforms[0].w*0.3;
+  player.vx=0;
+  player.vy=0;
+  player.onGround=true;
 }
 createPlatforms();
 
@@ -128,18 +132,18 @@ function spawnDust(x,y){
 
 function addShake(p){shakePower=Math.max(shakePower,p)}
 
-function drawLiquid(camY){
+function drawLiquid(viewBottom){
   if(biome!=='lava'&&biome!=='water')return;
   let color=biome==='lava'?'#ff2b1a':'#1e88e5';
-  let amp=25;
+  let amp=20;
   ctx.fillStyle=color;
   ctx.beginPath();
-  ctx.moveTo(0,canvas.height+camY+1000);
+  ctx.moveTo(0,viewBottom+40);
   for(let x=0;x<=canvas.width;x+=20){
-    let y=canvas.height+camY+900+Math.sin(t+x*0.02)*amp;
+    let y=viewBottom-5+Math.sin(t+x*0.02)*amp;
     ctx.lineTo(x,y);
   }
-  ctx.lineTo(canvas.width,canvas.height+camY+1000);
+  ctx.lineTo(canvas.width,viewBottom+40);
   ctx.fill();
 }
 
@@ -199,7 +203,9 @@ function update(){
     shakeX=0;shakeY=0;
   }
 
-  if(hasStarted && player.y > platforms[0].y + 2000){
+  const camY = Math.min(player.y - canvas.height*0.4, 0); // never scroll down
+  const screenY = player.y - camY;
+  if(hasStarted && screenY > canvas.height+150){
     document.getElementById('deathScreen').style.display='flex';
   }
 
@@ -224,22 +230,25 @@ function draw(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  let camY=player.y-canvas.height*0.4;
+  let camY = Math.min(player.y - canvas.height*0.4, 0);
+  let viewBottom = camY + canvas.height;
 
   ctx.save();
   ctx.translate(0,-camY);
 
-  drawLiquid(camY);
+  drawLiquid(viewBottom);
 
   ctx.save();
   ctx.translate(shakeX,shakeY);
 
   for(let p of platforms){
+    let h=viewBottom-p.y;
+    if(h<0)h=0;
     if(biome==='grass'||biome==='water')ctx.fillStyle='#3c8d2f';
     else if(biome==='desert')ctx.fillStyle='#d8b84f';
     else if(biome==='lava')ctx.fillStyle='#ff7b1a';
     else if(biome==='rock')ctx.fillStyle='#666666';
-    ctx.fillRect(p.x,p.y,p.w,5000);
+    ctx.fillRect(p.x,p.y,p.w,h);
   }
 
   particles.forEach(p=>{

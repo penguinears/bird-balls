@@ -10,7 +10,7 @@
 body{margin:0;font-family:Arial;overflow:hidden}
 canvas{display:block}
 #ui{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:white;font-size:40px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5)}
-#skipMsg{position:fixed;top:60px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:24px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5)}
+#combo{position:fixed;top:60px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:26px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5)}
 #deathScreen{position:fixed;top:0;left:0;width:100vw;height:100vh;background:black;display:none;justify-content:center;align-items:center;flex-direction:column}
 #deathScreen img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:.7}
 #deathScreen h1{position:relative;color:red;font-size:70px;font-weight:bold;margin-bottom:20px;text-shadow:0 0 20px black}
@@ -23,7 +23,7 @@ canvas{display:block}
 <body>
 
 <div id="ui">0</div>
-<div id="skipMsg"></div>
+<div id="combo"></div>
 <button id="respawnBtn">↻</button>
 
 <div id="deathScreen">
@@ -46,24 +46,13 @@ const ctx=canvas.getContext('2d');
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
 resize();addEventListener('resize',resize);
 
-const biomes=['grass','desert','lava','water','rock'];
-let biome=biomes[Math.floor(Math.random()*biomes.length)];
-
-function applyBiomeBackground(){
-  if(biome==='grass')document.body.style.background='linear-gradient(#87CEEB,#cfefff)';
-  else if(biome==='desert')document.body.style.background='linear-gradient(#ff9a3c,#ffcc66)';
-  else if(biome==='lava')document.body.style.background='linear-gradient(#3b0000,#000000)';
-  else if(biome==='water')document.body.style.background='linear-gradient(#1e88e5,#bbdefb)';
-  else if(biome==='rock')document.body.style.background='linear-gradient(#d0d0d0,#b0b0b0)';
-}
-applyBiomeBackground();
+let biome=Math.random()<.5?'grass':'desert';
+if(biome==='grass')document.body.style.background='linear-gradient(#87CEEB,#cfefff)';
+else document.body.style.background='linear-gradient(#ff9a3c,#ffcc66)';
 
 let score=0,gravity=.6,charge=0,maxCharge=80,targetSquish=0,currentSquish=0;
-let holdingDown=false,holdingUp=false,shakeX=0,shakeY=0,shakePower=0;
-let particles=[],clouds=[],t=0;
-let superReady=false,holdTime=0;
-let lastPlatformIndex=-1;
-let skipMsg='',skipTimer=0;
+let holdingDown=false,holdingUp=false,worldX=0,shakeX=0,shakeY=0,shakePower=0;
+let particles=[],clouds=[],combo=0,superReady=false,holdTime=0;
 
 const sndLaunch=new Audio('sounds/humordome-boing-boing-bounce-454474.mp3');
 const sndLand=new Audio('sounds/playzz-thud-491559 (1).mp3');
@@ -72,6 +61,7 @@ const img=new Image();
 img.src='images/1000043615-removebg-preview.png';
 
 const player={x:200,y:canvas.height-500,vx:0,vy:0,size:150,onGround:true};
+worldX=player.x;
 
 let platforms=[];
 
@@ -82,14 +72,13 @@ function createPlatforms(){
     let w=220+Math.random()*120;
     let gap=220+Math.random()*220;
     let hOff=Math.random()*140;
-    platforms.push({x:x,y:canvas.height-300-hOff,w:w,h:canvas.height,index:i});
+    platforms.push({x:x,y:canvas.height-300-hOff,w:w,h:canvas.height});
     x+=w+gap;
   }
 }
 
 function createClouds(){
   clouds=[];
-  if(biome==='rock')return;
   for(let i=0;i<6;i++){
     clouds.push({x:Math.random()*canvas.width,y:Math.random()*200,speed:.2+Math.random()*.3});
   }
@@ -107,10 +96,8 @@ function spawnDust(x,y){
 }
 
 function drawClouds(){
-  if(biome==='rock')return;
   clouds.forEach(c=>{
-    if(biome==='lava')ctx.fillStyle='rgba(255,80,0,.8)';
-    else ctx.fillStyle='rgba(255,255,255,.8)';
+    ctx.fillStyle='rgba(255,255,255,.8)';
     ctx.beginPath();
     ctx.ellipse(c.x,c.y,80,40,0,0,Math.PI*2);
     ctx.fill();
@@ -144,54 +131,33 @@ function drawPlayer(){
 
 function drawPlatforms(){
   platforms.forEach(p=>{
-    if(biome==='grass'||biome==='water'){
+    if(biome==='grass'){
       ctx.fillStyle='#3c8d2f';
       ctx.fillRect(p.x,p.y,p.w,p.h);
       ctx.fillStyle='#2e6b23';
       ctx.fillRect(p.x,p.y,p.w,12);
-    }else if(biome==='desert'){
+    }else{
       ctx.fillStyle='#d8b84f';
       ctx.fillRect(p.x,p.y,p.w,p.h);
       ctx.fillStyle='#c49e3a';
-      ctx.fillRect(p.x,p.y,p.w,12);
-    }else if(biome==='lava'){
-      ctx.fillStyle='#ff7b1a';
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle='#e85c00';
-      ctx.fillRect(p.x,p.y,p.w,12);
-    }else if(biome==='rock'){
-      ctx.fillStyle='#666666';
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle='#808080';
       ctx.fillRect(p.x,p.y,p.w,12);
     }
   });
 }
 
-function drawLiquid(){
-  if(biome!=='lava'&&biome!=='water')return;
-  let base=canvas.height-40;
-  let amp=20;
-  let color=biome==='lava'?'#ff2b1a':'#1e88e5';
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.moveTo(0,canvas.height);
-  ctx.lineTo(0,base+Math.sin(t)*amp);
-  for(let x=0;x<=canvas.width;x+=20){
-    let y=base+Math.sin(t+x*0.02)*amp;
-    ctx.lineTo(x,y);
-  }
-  ctx.lineTo(canvas.width,canvas.height);
-  ctx.closePath();
-  ctx.fill();
+function checkPerfectLanding(p){
+  let center=p.x+p.w/2;
+  let d=Math.abs(player.x-center);
+  if(d<40){combo++;addShake(10)}
+  else combo=0;
+  document.getElementById('combo').textContent=combo>1?'Combo x'+combo:'';
 }
 
 function update(){
-  t+=0.03;
-
   if(!player.onGround){
     player.vy+=gravity;
     player.x+=player.vx;
+    worldX+=player.vx;
     player.y+=player.vy;
   }
 
@@ -201,27 +167,15 @@ function update(){
     if(player.x>p.x&&player.x<p.x+p.w){
       let feet=player.y+player.size/2;
       let nextFeet=feet+player.vy;
-      if(feet<=p.y&&nextFeet>=p.y&&player.vy>3){
+      if(feet<=p.y&&nextFeet>=p.y){
         player.y=p.y-player.size/2;
         player.vy=0;
         player.vx*=.55;
         player.onGround=true;
-
-        sndLaunch.pause();
-        sndLaunch.currentTime=0;
-        sndLand.currentTime=0;
-        sndLand.play();
-
         spawnDust(player.x,p.y);
+        sndLand.currentTime=0;sndLand.play();
+        checkPerfectLanding(p);
         addShake(6);
-
-        let skipped=p.index-lastPlatformIndex-1;
-        if(skipped<0)skipped=0;
-        let gained=5+skipped*5;
-        score+=gained;
-        lastPlatformIndex=p.index;
-        skipMsg='Skipped '+skipped+' platforms (+'+gained+')';
-        skipTimer=60;
       }
     }
   });
@@ -232,33 +186,21 @@ function update(){
     platforms.forEach(p=>p.x-=d);
   }
 
-  if(!player.onGround&&player.vy>18)addShake(4);
-
-  shakeX=0;shakeY=0;
-  if(shakePower>0.2){
-    shakeX=(Math.random()-.5)*shakePower;
-    shakeY=(Math.random()-.5)*shakePower;
-    shakePower*=.85;
-  }else shakePower=0;
+  score=Math.max(score,Math.floor(worldX/160));
+  document.getElementById('ui').textContent=score;
 
   if(player.y>canvas.height+250){
     document.getElementById('deathScreen').style.display='flex';
   }
 
-  document.getElementById('ui').textContent=score;
-
-  if(skipTimer>0){
-    skipTimer--;
-    document.getElementById('skipMsg').textContent=skipMsg;
-  }else{
-    document.getElementById('skipMsg').textContent='';
-  }
+  shakeX=(Math.random()-.5)*shakePower;
+  shakeY=(Math.random()-.5)*shakePower;
+  shakePower*=.85;
 }
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawClouds();
-  drawLiquid();
   ctx.save();
   ctx.translate(shakeX,shakeY);
   drawPlatforms();
@@ -346,392 +288,21 @@ document.getElementById('respawnBtn').onclick=()=>{
 };
 
 function restart(){
-  score=0;
-  lastPlatformIndex=-1;
-  document.getElementById('skipMsg').textContent='';
+  score=0;combo=0;
+  document.getElementById('combo').textContent='';
   player.x=200;
   player.y=canvas.height-500;
   player.vx=0;
   player.vy=0;
+  worldX=player.x;
   targetSquish=0;
   currentSquish=0;
   charge=0;
   shakePower=0;
   particles=[];
-  t=0;
-  biome=biomes[Math.floor(Math.random()*biomes.length)];
-  applyBiomeBackground();
-  createPlatforms();
-  createClouds();
-  document.getElementById('deathScreen').style.display='none';
-}
-</script>
-</body>
-</html>
-``````html
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bird Balls</title>
-<link rel="icon" type="image/png" href="images/1000043615-removebg-preview.png">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<style>
-body{margin:0;font-family:Arial;overflow:hidden}
-canvas{display:block}
-#ui{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:white;font-size:40px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5)}
-#skipMsg{position:fixed;top:60px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:24px;font-weight:bold;text-shadow:0 3px 6px rgba(0,0,0,0.5)}
-#deathScreen{position:fixed;top:0;left:0;width:100vw;height:100vh;background:black;display:none;justify-content:center;align-items:center;flex-direction:column}
-#deathScreen img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;opacity:.7}
-#deathScreen h1{position:relative;color:red;font-size:70px;font-weight:bold;margin-bottom:20px;text-shadow:0 0 20px black}
-#deathScreen button{position:relative;padding:20px 40px;font-size:30px;border:4px solid rgb(30,48,80);border-radius:16px;background:white;color:black;box-shadow:0 4px 10px rgba(0,0,0,0.3)}
-#controls{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);display:flex;gap:30px}
-.ctrlBtn{padding:20px 30px;font-size:26px;border:4px solid rgb(30,48,80);border-radius:16px;background:white;color:black;box-shadow:0 4px 10px rgba(0,0,0,0.3);user-select:none}
-#respawnBtn{position:fixed;top:10px;left:10px;padding:12px 18px;font-size:20px;border:3px solid rgb(30,48,80);border-radius:12px;background:white;color:black;box-shadow:0 3px 8px rgba(0,0,0,0.3);user-select:none}
-</style>
-</head>
-<body>
-
-<div id="ui">0</div>
-<div id="skipMsg"></div>
-<button id="respawnBtn">↻</button>
-
-<div id="deathScreen">
-  <img src="images/chick.webp">
-  <h1>U DIED LOL</h1>
-  <button onclick="restart()">Retry</button>
-</div>
-
-<div id="controls">
-  <button id="downBtn" class="ctrlBtn"><i class="fa-solid fa-arrow-down" style="color:rgb(30,48,80)"></i></button>
-  <button id="upBtn" class="ctrlBtn"><i class="fa-solid fa-arrow-up" style="color:rgb(30,48,80)"></i></button>
-  <button id="releaseBtn" class="ctrlBtn">RELEASE</button>
-</div>
-
-<canvas id="game"></canvas>
-
-<script>
-const canvas=document.getElementById('game');
-const ctx=canvas.getContext('2d');
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
-resize();addEventListener('resize',resize);
-
-const biomes=['grass','desert','lava','water','rock'];
-let biome=biomes[Math.floor(Math.random()*biomes.length)];
-
-function applyBiomeBackground(){
+  biome=Math.random()<.5?'grass':'desert';
   if(biome==='grass')document.body.style.background='linear-gradient(#87CEEB,#cfefff)';
-  else if(biome==='desert')document.body.style.background='linear-gradient(#ff9a3c,#ffcc66)';
-  else if(biome==='lava')document.body.style.background='linear-gradient(#3b0000,#000000)';
-  else if(biome==='water')document.body.style.background='linear-gradient(#1e88e5,#bbdefb)';
-  else if(biome==='rock')document.body.style.background='linear-gradient(#d0d0d0,#b0b0b0)';
-}
-applyBiomeBackground();
-
-let score=0,gravity=.6,charge=0,maxCharge=80,targetSquish=0,currentSquish=0;
-let holdingDown=false,holdingUp=false,shakeX=0,shakeY=0,shakePower=0;
-let particles=[],clouds=[],t=0;
-let superReady=false,holdTime=0;
-let lastPlatformIndex=-1;
-let skipMsg='',skipTimer=0;
-
-const sndLaunch=new Audio('sounds/humordome-boing-boing-bounce-454474.mp3');
-const sndLand=new Audio('sounds/playzz-thud-491559 (1).mp3');
-
-const img=new Image();
-img.src='images/1000043615-removebg-preview.png';
-
-const player={x:200,y:canvas.height-500,vx:0,vy:0,size:150,onGround:true};
-
-let platforms=[];
-
-function createPlatforms(){
-  platforms=[];
-  let x=0;
-  for(let i=0;i<40;i++){
-    let w=220+Math.random()*120;
-    let gap=220+Math.random()*220;
-    let hOff=Math.random()*140;
-    platforms.push({x:x,y:canvas.height-300-hOff,w:w,h:canvas.height,index:i});
-    x+=w+gap;
-  }
-}
-
-function createClouds(){
-  clouds=[];
-  if(biome==='rock')return;
-  for(let i=0;i<6;i++){
-    clouds.push({x:Math.random()*canvas.width,y:Math.random()*200,speed:.2+Math.random()*.3});
-  }
-}
-
-createPlatforms();
-createClouds();
-
-function addShake(p){if(p>shakePower)shakePower=p}
-
-function spawnDust(x,y){
-  for(let i=0;i<8;i++){
-    particles.push({x:x,y:y,vx:(Math.random()-.5)*4,vy:-Math.random()*2,life:20});
-  }
-}
-
-function drawClouds(){
-  if(biome==='rock')return;
-  clouds.forEach(c=>{
-    if(biome==='lava')ctx.fillStyle='rgba(255,80,0,.8)';
-    else ctx.fillStyle='rgba(255,255,255,.8)';
-    ctx.beginPath();
-    ctx.ellipse(c.x,c.y,80,40,0,0,Math.PI*2);
-    ctx.fill();
-    c.x+=c.speed;
-    if(c.x>canvas.width+100)c.x=-100;
-  });
-}
-
-function drawParticles(){
-  particles.forEach(p=>{
-    ctx.fillStyle='rgba(255,255,255,'+(p.life/20)+')';
-    ctx.fillRect(p.x,p.y,6,6);
-    p.x+=p.vx;p.y+=p.vy;p.life--;
-  });
-  particles=particles.filter(p=>p.life>0);
-}
-
-function drawPlayer(){
-  currentSquish+=(targetSquish-currentSquish)*.25;
-  let topH=player.size*.55;
-  let botH=player.size*.45;
-  let squish=botH-currentSquish;if(squish<10)squish=10;
-  let shift=(botH-squish);
-  ctx.save();
-  ctx.translate(player.x,player.y);
-  ctx.scale(-1,1);
-  ctx.drawImage(img,0,0,img.width,img.height*.55,-player.size/2,-player.size/2+shift,player.size,topH);
-  ctx.drawImage(img,0,img.height*.55,img.width,img.height*.45,-player.size/2,-player.size/2+topH+shift,player.size,squish);
-  ctx.restore();
-}
-
-function drawPlatforms(){
-  platforms.forEach(p=>{
-    if(biome==='grass'||biome==='water'){
-      ctx.fillStyle='#3c8d2f';
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle='#2e6b23';
-      ctx.fillRect(p.x,p.y,p.w,12);
-    }else if(biome==='desert'){
-      ctx.fillStyle='#d8b84f';
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle='#c49e3a';
-      ctx.fillRect(p.x,p.y,p.w,12);
-    }else if(biome==='lava'){
-      ctx.fillStyle='#ff7b1a';
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle='#e85c00';
-      ctx.fillRect(p.x,p.y,p.w,12);
-    }else if(biome==='rock'){
-      ctx.fillStyle='#666666';
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle='#808080';
-      ctx.fillRect(p.x,p.y,p.w,12);
-    }
-  });
-}
-
-function drawLiquid(){
-  if(biome!=='lava'&&biome!=='water')return;
-  let base=canvas.height-40;
-  let amp=20;
-  let color=biome==='lava'?'#ff2b1a':'#1e88e5';
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.moveTo(0,canvas.height);
-  ctx.lineTo(0,base+Math.sin(t)*amp);
-  for(let x=0;x<=canvas.width;x+=20){
-    let y=base+Math.sin(t+x*0.02)*amp;
-    ctx.lineTo(x,y);
-  }
-  ctx.lineTo(canvas.width,canvas.height);
-  ctx.closePath();
-  ctx.fill();
-}
-
-function update(){
-  t+=0.03;
-
-  if(!player.onGround){
-    player.vy+=gravity;
-    player.x+=player.vx;
-    player.y+=player.vy;
-  }
-
-  player.onGround=false;
-
-  platforms.forEach(p=>{
-    if(player.x>p.x&&player.x<p.x+p.w){
-      let feet=player.y+player.size/2;
-      let nextFeet=feet+player.vy;
-      if(feet<=p.y&&nextFeet>=p.y&&player.vy>3){
-        player.y=p.y-player.size/2;
-        player.vy=0;
-        player.vx*=.55;
-        player.onGround=true;
-
-        sndLaunch.pause();
-        sndLaunch.currentTime=0;
-        sndLand.currentTime=0;
-        sndLand.play();
-
-        spawnDust(player.x,p.y);
-        addShake(6);
-
-        let skipped=p.index-lastPlatformIndex-1;
-        if(skipped<0)skipped=0;
-        let gained=5+skipped*5;
-        score+=gained;
-        lastPlatformIndex=p.index;
-        skipMsg='Skipped '+skipped+' platforms (+'+gained+')';
-        skipTimer=60;
-      }
-    }
-  });
-
-  if(player.x>canvas.width*.35){
-    let d=player.x-canvas.width*.35;
-    player.x=canvas.width*.35;
-    platforms.forEach(p=>p.x-=d);
-  }
-
-  if(!player.onGround&&player.vy>18)addShake(4);
-
-  shakeX=0;shakeY=0;
-  if(shakePower>0.2){
-    shakeX=(Math.random()-.5)*shakePower;
-    shakeY=(Math.random()-.5)*shakePower;
-    shakePower*=.85;
-  }else shakePower=0;
-
-  if(player.y>canvas.height+250){
-    document.getElementById('deathScreen').style.display='flex';
-  }
-
-  document.getElementById('ui').textContent=score;
-
-  if(skipTimer>0){
-    skipTimer--;
-    document.getElementById('skipMsg').textContent=skipMsg;
-  }else{
-    document.getElementById('skipMsg').textContent='';
-  }
-}
-
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawClouds();
-  drawLiquid();
-  ctx.save();
-  ctx.translate(shakeX,shakeY);
-  drawPlatforms();
-  drawParticles();
-  drawPlayer();
-  ctx.restore();
-}
-
-function loop(){update();draw();requestAnimationFrame(loop)}
-loop();
-
-function pressDown(){
-  if(player.onGround){
-    targetSquish+=1.2+(charge*.03);
-    charge+=1.1;
-    if(targetSquish>70)targetSquish=70;
-    if(charge>maxCharge)charge=maxCharge;
-  }
-}
-
-function pressUp(){
-  if(player.onGround){
-    targetSquish-=3;
-    charge-=2;
-    if(targetSquish<0)targetSquish=0;
-    if(charge<0)charge=0;
-  }
-}
-
-function releaseJump(){
-  if(player.onGround&&charge>0){
-    sndLaunch.currentTime=0;sndLaunch.play();
-    let vy=-12-charge*.35;
-    let vx=3+charge*.18;
-    if(superReady){
-      vy*=1.8;vx*=1.8;addShake(20);
-      superReady=false;
-    }else addShake(charge*.4);
-    player.vy=vy;
-    player.vx=vx;
-    player.onGround=false;
-    targetSquish=0;
-    charge=0;
-    holdTime=0;
-  }
-}
-
-function handleHeldButtons(){
-  if(holdingDown&&player.onGround){
-    pressDown();
-    holdTime+=1/60;
-    if(holdTime>1.5)superReady=true;
-  }
-  if(holdingUp&&player.onGround){
-    pressUp();
-    holdTime=Math.max(0,holdTime-1/60);
-    if(holdTime<=.2)superReady=false;
-  }
-  requestAnimationFrame(handleHeldButtons);
-}
-handleHeldButtons();
-
-const downBtn=document.getElementById('downBtn');
-const upBtn=document.getElementById('upBtn');
-const releaseBtn=document.getElementById('releaseBtn');
-
-downBtn.onmousedown=()=>holdingDown=true;
-downBtn.onmouseup=()=>holdingDown=false;
-downBtn.onmouseleave=()=>holdingDown=false;
-downBtn.ontouchstart=e=>{e.preventDefault();holdingDown=true};
-downBtn.ontouchend=()=>holdingDown=false;
-
-upBtn.onmousedown=()=>holdingUp=true;
-upBtn.onmouseup=()=>holdingUp=false;
-upBtn.onmouseleave=()=>holdingUp=false;
-upBtn.ontouchstart=e=>{e.preventDefault();holdingUp=true};
-upBtn.ontouchend=()=>holdingUp=false;
-
-releaseBtn.onmousedown=releaseJump;
-releaseBtn.ontouchstart=e=>{e.preventDefault();releaseJump()};
-
-document.getElementById('respawnBtn').onclick=()=>{
-  restart();
-  document.getElementById('deathScreen').style.display='none';
-};
-
-function restart(){
-  score=0;
-  lastPlatformIndex=-1;
-  document.getElementById('skipMsg').textContent='';
-  player.x=200;
-  player.y=canvas.height-500;
-  player.vx=0;
-  player.vy=0;
-  targetSquish=0;
-  currentSquish=0;
-  charge=0;
-  shakePower=0;
-  particles=[];
-  t=0;
-  biome=biomes[Math.floor(Math.random()*biomes.length)];
-  applyBiomeBackground();
+  else document.body.style.background='linear-gradient(#ff9a3c,#ffcc66)';
   createPlatforms();
   createClouds();
   document.getElementById('deathScreen').style.display='none';

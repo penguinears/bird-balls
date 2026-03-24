@@ -45,9 +45,18 @@ padding:16px 32px;font-size:24px;
 border-radius:16px;border:4px solid #1e3050;
 background:white;z-index:2
 }
+
+#rotateMsg{
+position:fixed;top:0;left:0;width:100vw;height:100vh;
+background:black;color:white;
+display:none;justify-content:center;align-items:center;
+text-align:center;z-index:50;font-size:28px
+}
 </style>
 </head>
 <body>
+
+<div id="rotateMsg">Rotate your device</div>
 
 <div id="ui">0</div>
 
@@ -66,6 +75,25 @@ background:white;z-index:2
 <canvas id="game"></canvas>
 
 <script>
+// fullscreen
+document.body.addEventListener('click', ()=>{
+  if(document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen();
+  }
+},{once:true});
+
+// orientation
+function checkOrientation(){
+  if(window.innerHeight > window.innerWidth){
+    document.getElementById('rotateMsg').style.display = 'flex';
+  }else{
+    document.getElementById('rotateMsg').style.display = 'none';
+  }
+}
+checkOrientation();
+addEventListener('resize',checkOrientation);
+
+// canvas
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
@@ -75,7 +103,7 @@ resize();addEventListener('resize',resize);
 const sndLaunch=new Audio('sounds/humordome-boing-boing-bounce-454474.mp3');
 const sndLand=new Audio('sounds/playzz-thud-491559 (1).mp3');
 
-// bird
+// image
 const img=new Image();
 img.src='images/1000043615-removebg-preview.png';
 
@@ -87,32 +115,28 @@ let holdingUp=false;
 let dead=false;
 let lastPlatform=-1;
 
-// player
-const player={
-x:200,
-y:200,
-vx:0,
-vy:0,
-size:100,
-onGround:true
-};
+// shake
+let shakePower=0, shakeX=0, shakeY=0;
+function addShake(p){ if(p>shakePower) shakePower=p; }
 
-// platforms (HARDER)
+// player
+const player={x:200,y:200,vx:0,vy:0,size:100,onGround:true};
+
+// platforms
 let platforms=[];
 function createPlatforms(){
 platforms=[];
 let x=0;
 for(let i=0;i<50;i++){
 let w=180+Math.random()*80;
-let gap=260+Math.random()*200; // BIGGER gaps
-let y=canvas.height*0.6 + (Math.random()-0.5)*180; // more height variation
+let gap=260+Math.random()*200;
+let y=canvas.height*0.6+(Math.random()-0.5)*180;
 platforms.push({x,y,w,id:i});
 x+=w+gap;
 }
 player.x=platforms[0].x+100;
 player.y=platforms[0].y-player.size/2;
-player.vx=0;
-player.vy=0;
+player.vx=0;player.vy=0;
 player.onGround=true;
 lastPlatform=-1;
 }
@@ -128,9 +152,7 @@ ctx.fillRect(0,canvas.height-40,canvas.width,40);
 function update(){
 if(dead)return;
 
-if(!player.onGround){
-player.vy+=0.6;
-}
+if(!player.onGround) player.vy+=0.6;
 
 player.x+=player.vx;
 player.y+=player.vy;
@@ -145,18 +167,27 @@ let nextFeet=feet+player.vy;
 if(player.vy>=0 && feet<=p.y && nextFeet>=p.y){
 player.y=p.y-player.size/2;
 player.vy=0;
-player.vx*=0.7; // keep more speed
+player.vx*=0.7;
 grounded=true;
 
-// STOP launch sound + play land
+// scoring with skips
+if(p.id!==lastPlatform){
+let skipped=0;
+if(lastPlatform!==-1){
+skipped=p.id-lastPlatform-1;
+if(skipped<0)skipped=0;
+}
+score+=1+skipped;
+lastPlatform=p.id;
+
+// sound
 sndLaunch.pause();
 sndLaunch.currentTime=0;
 sndLand.currentTime=0;
 sndLand.play();
 
-if(p.id!==lastPlatform){
-score++;
-lastPlatform=p.id;
+// shake
+addShake(6+skipped*2);
 }
 }
 }
@@ -164,12 +195,23 @@ lastPlatform=p.id;
 
 player.onGround=grounded;
 
+// scroll
 if(player.x>canvas.width*0.4){
 let d=player.x-canvas.width*0.4;
 player.x=canvas.width*0.4;
 platforms.forEach(p=>p.x-=d);
 }
 
+// shake update
+if(shakePower>0.2){
+shakeX=(Math.random()-0.5)*shakePower;
+shakeY=(Math.random()-0.5)*shakePower;
+shakePower*=0.85;
+}else{
+shakePower=0;shakeX=0;shakeY=0;
+}
+
+// death
 if(player.y>canvas.height){
 dead=true;
 document.getElementById('deathScreen').style.display='flex';
@@ -180,7 +222,11 @@ document.getElementById('ui').textContent=score;
 
 // draw
 function draw(){
+ctx.setTransform(1,0,0,1,0,0);
 ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ctx.save();
+ctx.translate(shakeX,shakeY);
 
 drawWater();
 
@@ -189,26 +235,23 @@ for(let p of platforms){
 ctx.fillRect(p.x,p.y,p.w,canvas.height-p.y);
 }
 
-// squash from bottom
+// squash
 ctx.save();
-let feetY = player.y + player.size/2;
-ctx.translate(player.x, feetY);
+let feetY=player.y+player.size/2;
+ctx.translate(player.x,feetY);
 ctx.scale(-1,1);
 
-let squash = 1 - charge*0.005;
-if(squash < 0.5) squash = 0.5;
+let squash=1-charge*0.005;
+if(squash<0.5)squash=0.5;
 
-ctx.scale(1, squash);
+ctx.scale(1,squash);
 ctx.drawImage(img,-player.size/2,-player.size,player.size,player.size);
+ctx.restore();
 
 ctx.restore();
 }
 
-function loop(){
-update();
-draw();
-requestAnimationFrame(loop);
-}
+function loop(){update();draw();requestAnimationFrame(loop)}
 loop();
 
 // controls
@@ -231,8 +274,8 @@ if(player.onGround){
 sndLaunch.currentTime=0;
 sndLaunch.play();
 
-player.vy=-14-charge*0.45; // STRONGER jump
-player.vx=5+charge*0.3;   // faster forward
+player.vy=-14-charge*0.45;
+player.vx=5+charge*0.3;
 player.onGround=false;
 charge=0;
 }
@@ -245,6 +288,7 @@ requestAnimationFrame(holdLoop);
 }
 holdLoop();
 
+// buttons
 downBtn.onmousedown=()=>holdingDown=true;
 downBtn.onmouseup=()=>holdingDown=false;
 downBtn.ontouchstart=e=>{e.preventDefault();holdingDown=true};
@@ -257,6 +301,7 @@ upBtn.ontouchend=()=>holdingUp=false;
 
 releaseBtn.onclick=releaseJump;
 
+// restart
 function restart(){
 score=0;
 charge=0;

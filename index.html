@@ -85,6 +85,7 @@ let charge=0;
 let holdingDown=false;
 let holdingUp=false;
 let dead=false;
+let lastPlatform=-1;
 
 // player
 const player={
@@ -96,16 +97,16 @@ size:100,
 onGround:true
 };
 
-// platforms
+// platforms (HARDER)
 let platforms=[];
 function createPlatforms(){
 platforms=[];
 let x=0;
 for(let i=0;i<50;i++){
-let w=200+Math.random()*100;
-let gap=180+Math.random()*120;
-let y=canvas.height*0.6 + (Math.random()-0.5)*100;
-platforms.push({x,y,w});
+let w=180+Math.random()*80;
+let gap=260+Math.random()*200; // BIGGER gaps
+let y=canvas.height*0.6 + (Math.random()-0.5)*180; // more height variation
+platforms.push({x,y,w,id:i});
 x+=w+gap;
 }
 player.x=platforms[0].x+100;
@@ -113,6 +114,7 @@ player.y=platforms[0].y-player.size/2;
 player.vx=0;
 player.vy=0;
 player.onGround=true;
+lastPlatform=-1;
 }
 createPlatforms();
 
@@ -126,16 +128,13 @@ ctx.fillRect(0,canvas.height-40,canvas.width,40);
 function update(){
 if(dead)return;
 
-// gravity
 if(!player.onGround){
 player.vy+=0.6;
 }
 
-// move
 player.x+=player.vx;
 player.y+=player.vy;
 
-// collision
 let grounded=false;
 
 for(let p of platforms){
@@ -146,25 +145,31 @@ let nextFeet=feet+player.vy;
 if(player.vy>=0 && feet<=p.y && nextFeet>=p.y){
 player.y=p.y-player.size/2;
 player.vy=0;
-player.vx*=0.6;
+player.vx*=0.7; // keep more speed
 grounded=true;
+
+// STOP launch sound + play land
+sndLaunch.pause();
+sndLaunch.currentTime=0;
 sndLand.currentTime=0;
 sndLand.play();
+
+if(p.id!==lastPlatform){
 score++;
+lastPlatform=p.id;
+}
 }
 }
 }
 
 player.onGround=grounded;
 
-// scroll
 if(player.x>canvas.width*0.4){
 let d=player.x-canvas.width*0.4;
 player.x=canvas.width*0.4;
 platforms.forEach(p=>p.x-=d);
 }
 
-// death
 if(player.y>canvas.height){
 dead=true;
 document.getElementById('deathScreen').style.display='flex';
@@ -177,29 +182,28 @@ document.getElementById('ui').textContent=score;
 function draw(){
 ctx.clearRect(0,0,canvas.width,canvas.height);
 
-// water
 drawWater();
 
-// platforms
 ctx.fillStyle="#3c8d2f";
 for(let p of platforms){
 ctx.fillRect(p.x,p.y,p.w,canvas.height-p.y);
 }
 
-// bird (with squish)
+// squash from bottom
 ctx.save();
-ctx.translate(player.x,player.y);
+let feetY = player.y + player.size/2;
+ctx.translate(player.x, feetY);
+ctx.scale(-1,1);
 
 let squash = 1 - charge*0.005;
-let stretch = 1 + charge*0.005;
+if(squash < 0.5) squash = 0.5;
 
-ctx.scale(stretch,squash);
+ctx.scale(1, squash);
+ctx.drawImage(img,-player.size/2,-player.size,player.size,player.size);
 
-ctx.drawImage(img,-player.size/2,-player.size/2,player.size,player.size);
 ctx.restore();
 }
 
-// loop
 function loop(){
 update();
 draw();
@@ -211,13 +215,13 @@ loop();
 function pressDown(){
 if(player.onGround){
 charge+=1;
-if(charge>60)charge=60;
+if(charge>80)charge=80;
 }
 }
 
 function pressUp(){
 if(player.onGround){
-charge-=1.5;
+charge-=2;
 if(charge<0)charge=0;
 }
 }
@@ -227,14 +231,13 @@ if(player.onGround){
 sndLaunch.currentTime=0;
 sndLaunch.play();
 
-player.vy=-10-charge*0.3;
-player.vx=4+charge*0.2;
+player.vy=-14-charge*0.45; // STRONGER jump
+player.vx=5+charge*0.3;   // faster forward
 player.onGround=false;
 charge=0;
 }
 }
 
-// hold loop
 function holdLoop(){
 if(holdingDown)pressDown();
 if(holdingUp)pressUp();
@@ -242,7 +245,6 @@ requestAnimationFrame(holdLoop);
 }
 holdLoop();
 
-// buttons
 downBtn.onmousedown=()=>holdingDown=true;
 downBtn.onmouseup=()=>holdingDown=false;
 downBtn.ontouchstart=e=>{e.preventDefault();holdingDown=true};
@@ -255,7 +257,6 @@ upBtn.ontouchend=()=>holdingUp=false;
 
 releaseBtn.onclick=releaseJump;
 
-// restart
 function restart(){
 score=0;
 charge=0;

@@ -4,336 +4,245 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
 <title>Bird Balls</title>
+
 <style>
-body{margin:0;overflow:hidden;background:black;touch-action:none}
+body{margin:0;overflow:hidden;background:linear-gradient(#87CEEB,#cfefff);touch-action:none}
 canvas{display:block}
-#ui{position:fixed;top:10px;left:50%;transform:translateX(-50%);color:white;font-size:32px;font-weight:bold;pointer-events:none;z-index:5}
-#skipMsg{position:fixed;top:50px;left:50%;transform:translateX(-50%);color:#ffd54a;font-size:20px;font-weight:bold;pointer-events:none;z-index:5}
-#controls{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:14px;z-index:5}
-.ctrlBtn{padding:12px 18px;font-size:18px;border:3px solid #1e3050;border-radius:12px;background:white;color:black}
-#respawnBtn{position:fixed;top:10px;left:10px;padding:8px 12px;font-size:16px;border:3px solid #1e3050;border-radius:10px;background:white;color:black;z-index:5}
+
+#ui{
+position:fixed;top:10px;left:50%;transform:translateX(-50%);
+color:white;font-size:32px;font-weight:bold;z-index:5
+}
+
+#controls{
+position:fixed;bottom:10px;left:50%;transform:translateX(-50%);
+display:flex;gap:14px;z-index:5
+}
+
+.ctrlBtn{
+padding:12px 18px;font-size:18px;
+border:3px solid #1e3050;border-radius:12px;
+background:white;color:black
+}
+
 #deathScreen{
-  position:fixed;top:0;left:0;width:100vw;height:100vh;
-  background:black;display:none;justify-content:center;align-items:center;flex-direction:column;
-  z-index:20;
+position:fixed;top:0;left:0;width:100vw;height:100vh;
+display:none;justify-content:center;align-items:center;
+flex-direction:column;background:black;z-index:20
 }
-#deathScreen img{width:100%;height:100%;object-fit:cover;opacity:.7;position:absolute}
-#deathScreen h1{position:relative;color:red;font-size:60px;font-weight:bold;margin-bottom:20px;z-index:21}
+
+#deathScreen img{
+position:absolute;width:100%;height:100%;
+object-fit:cover;opacity:.7
+}
+
+#deathScreen h1{
+color:red;font-size:60px;z-index:2;margin-bottom:20px
+}
+
 #deathScreen button{
-  position:relative;padding:16px 32px;font-size:24px;
-  border:4px solid #1e3050;border-radius:16px;background:white;color:black;z-index:21
-}
-#rotate{
-  position:fixed;top:0;left:0;width:100vw;height:100vh;
-  background:black;color:white;font-size:30px;
-  display:none;justify-content:center;align-items:center;text-align:center;z-index:30
+padding:16px 32px;font-size:24px;
+border-radius:16px;border:4px solid #1e3050;
+background:white;z-index:2
 }
 </style>
 </head>
 <body>
 
-<div id="rotate">Rotate your device</div>
-
 <div id="ui">0</div>
-<div id="skipMsg"></div>
-<button id="respawnBtn">↻</button>
 
 <div id="deathScreen">
-  <img src="images/chick.webp">
-  <h1>U DIED LOL</h1>
-  <button onclick="restart()">Retry</button>
+<img src="images/chick.webp">
+<h1>LOL YOU DIED</h1>
+<button onclick="restart()">Play Again</button>
 </div>
 
 <div id="controls">
-  <button id="downBtn" class="ctrlBtn">↓</button>
-  <button id="upBtn" class="ctrlBtn">↑</button>
-  <button id="releaseBtn" class="ctrlBtn">RELEASE</button>
+<button id="downBtn" class="ctrlBtn">↓</button>
+<button id="upBtn" class="ctrlBtn">↑</button>
+<button id="releaseBtn" class="ctrlBtn">RELEASE</button>
 </div>
 
 <canvas id="game"></canvas>
 
 <script>
-// ORIENTATION
-function checkOrientation(){
-  if(window.innerHeight>window.innerWidth)
-    document.getElementById('rotate').style.display='flex';
-  else
-    document.getElementById('rotate').style.display='none';
-}
-checkOrientation();
-addEventListener('resize',checkOrientation);
-
-// FULLSCREEN
-document.body.addEventListener('click',()=>{
-  if(document.documentElement.requestFullscreen)
-    document.documentElement.requestFullscreen();
-},{once:true});
-
-// CANVAS
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
 function resize(){canvas.width=innerWidth;canvas.height=innerHeight}
 resize();addEventListener('resize',resize);
 
-// BIOMES
-const biomes=['grass','desert','lava','water','rock'];
-let biome=biomes[Math.floor(Math.random()*biomes.length)];
-
-function setBackground(){
-  if(biome==='grass')document.body.style.background='linear-gradient(#87CEEB,#cfefff)';
-  if(biome==='desert')document.body.style.background='linear-gradient(#ff9a3c,#ffcc66)';
-  if(biome==='lava')document.body.style.background='linear-gradient(#3b0000,#000000)';
-  if(biome==='water')document.body.style.background='linear-gradient(#1e88e5,#bbdefb)';
-  if(biome==='rock')document.body.style.background='linear-gradient(#bfbfbf,#9f9f9f)';
-}
-setBackground();
-
-// SOUNDS
+// sounds
 const sndLaunch=new Audio('sounds/humordome-boing-boing-bounce-454474.mp3');
 const sndLand=new Audio('sounds/playzz-thud-491559 (1).mp3');
 
-// BIRD IMAGE
+// bird
 const img=new Image();
 img.src='images/1000043615-removebg-preview.png';
 
-// GAME STATE
+// state
 let score=0;
 let charge=0;
-let maxCharge=80;
 let holdingDown=false;
 let holdingUp=false;
-let shakePower=0;
-let shakeX=0,shakeY=0;
-let skipMsg='',skipTimer=0;
-let lastPlatformIndex=-1;
-let t=0;
-let hasStarted=false;
 let dead=false;
-let startedJumping=false;
 
-// PLAYER
+// player
 const player={
-  x:300,
-  y:0,
-  vx:0,
-  vy:0,
-  size:120,
-  onGround:true
+x:200,
+y:200,
+vx:0,
+vy:0,
+size:100,
+onGround:true
 };
 
-// PLATFORMS
+// platforms
 let platforms=[];
 function createPlatforms(){
-  platforms=[];
-  let x=0;
-  const midY = canvas.height*0.5;
-  for(let i=0;i<80;i++){
-    let w=240+Math.random()*160;
-    let gap=240+Math.random()*260;
-    let hOff=(Math.random()-0.5)*120;
-    let topY=midY+hOff;
-    platforms.push({x:x,y:topY,w:w,index:i});
-    x+=w+gap;
-  }
-  // spawn on top of first platform
-  player.y=platforms[0].y-player.size-5; // slightly above
-  player.x=platforms[0].x+platforms[0].w*0.3;
-  player.vx=0;
-  player.vy=0;
-  player.onGround=true;
-  hasStarted=false;
-  dead=false;
-  startedJumping=false;
+platforms=[];
+let x=0;
+for(let i=0;i<50;i++){
+let w=200+Math.random()*100;
+let gap=180+Math.random()*120;
+let y=canvas.height*0.6 + (Math.random()-0.5)*100;
+platforms.push({x,y,w});
+x+=w+gap;
+}
+player.x=platforms[0].x+100;
+player.y=platforms[0].y-player.size/2;
+player.vx=0;
+player.vy=0;
+player.onGround=true;
 }
 createPlatforms();
 
-// PARTICLES
-let particles=[];
-function spawnDust(x,y){
-  for(let i=0;i<8;i++){
-    particles.push({x,y,vx:(Math.random()-.5)*4,vy:-Math.random()*2,life:20});
-  }
+// water
+function drawWater(){
+ctx.fillStyle="#1e88e5";
+ctx.fillRect(0,canvas.height-40,canvas.width,40);
 }
 
-function addShake(p){shakePower=Math.max(shakePower,p)}
-
-function drawLiquid(){
-  if(biome!=='lava'&&biome!=='water')return;
-  let color=biome==='lava'?'#ff2b1a':'#1e88e5';
-  let amp=20;
-  ctx.fillStyle=color;
-  ctx.beginPath();
-  ctx.moveTo(0,canvas.height+40);
-  for(let x=0;x<=canvas.width;x+=20){
-    let y=canvas.height-5+Math.sin(t+x*0.02)*amp;
-    ctx.lineTo(x,y);
-  }
-  ctx.lineTo(canvas.width,canvas.height+40);
-  ctx.fill();
-}
-
-function landed(p){
-  sndLaunch.pause();
-  sndLaunch.currentTime=0;
-  sndLand.currentTime=0;
-  sndLand.play();
-  spawnDust(player.x,p.y);
-  addShake(6);
-  let skipped=p.index-lastPlatformIndex-1;
-  if(skipped<0)skipped=0;
-  let gained=5+skipped*5;
-  score+=gained;
-  lastPlatformIndex=p.index;
-  skipMsg='Skipped '+skipped+' (+ '+gained+')';
-  skipTimer=60;
-}
-
+// update
 function update(){
-  if(dead)return;
+if(dead)return;
 
-  t+=0.03;
-
-  // physics
-  if(!player.onGround){
-    player.vy+=0.6;
-    player.x+=player.vx;
-    player.y+=player.vy;
-  }
-
-  player.onGround=false;
-
-  // PLATFORM COLLISION (swept, full width)
-  for(let p of platforms){
-    if(player.x + player.size/2 > p.x && player.x - player.size/2 < p.x+p.w){
-      let feet = player.y + player.size/2;
-      let nextFeet = feet + player.vy;
-      if(player.vy > 0 && feet <= p.y && nextFeet >= p.y){
-        player.y = p.y - player.size/2;
-        player.vy = 0;
-        player.vx *= 0.55;
-        player.onGround = true;
-        landed(p);
-      }
-    }
-  }
-
-  // horizontal scroll
-  if(player.x>canvas.width*0.35){
-    let d=player.x-canvas.width*0.35;
-    player.x=canvas.width*0.35;
-    platforms.forEach(p=>p.x-=d);
-  }
-
-  // shake
-  if(shakePower>0.2){
-    shakeX=(Math.random()-.5)*shakePower;
-    shakeY=(Math.random()-.5)*shakePower;
-    shakePower*=0.85;
-  }else{
-    shakePower=0;
-    shakeX=0;shakeY=0;
-  }
-
-  // death: ONLY after first jump
-  if(startedJumping && player.y - player.size/2 > canvas.height+50){
-    dead=true;
-    document.getElementById('deathScreen').style.display='flex';
-  }
-
-  document.getElementById('ui').textContent=score;
-
-  if(skipTimer>0){
-    skipTimer--;
-    document.getElementById('skipMsg').textContent=skipMsg;
-  }else{
-    document.getElementById('skipMsg').textContent='';
-  }
-
-  particles.forEach(p=>{
-    p.x+=p.vx;
-    p.y+=p.vy;
-    p.life--;
-  });
-  particles=particles.filter(p=>p.life>0);
+// gravity
+if(!player.onGround){
+player.vy+=0.6;
 }
 
+// move
+player.x+=player.vx;
+player.y+=player.vy;
+
+// collision
+let grounded=false;
+
+for(let p of platforms){
+if(player.x+player.size/2>p.x && player.x-player.size/2<p.x+p.w){
+let feet=player.y+player.size/2;
+let nextFeet=feet+player.vy;
+
+if(player.vy>=0 && feet<=p.y && nextFeet>=p.y){
+player.y=p.y-player.size/2;
+player.vy=0;
+player.vx*=0.6;
+grounded=true;
+sndLand.currentTime=0;
+sndLand.play();
+score++;
+}
+}
+}
+
+player.onGround=grounded;
+
+// scroll
+if(player.x>canvas.width*0.4){
+let d=player.x-canvas.width*0.4;
+player.x=canvas.width*0.4;
+platforms.forEach(p=>p.x-=d);
+}
+
+// death
+if(player.y>canvas.height){
+dead=true;
+document.getElementById('deathScreen').style.display='flex';
+}
+
+document.getElementById('ui').textContent=score;
+}
+
+// draw
 function draw(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  drawLiquid();
+// water
+drawWater();
 
-  ctx.save();
-  ctx.translate(shakeX,shakeY);
-
-  for(let p of platforms){
-    let h=canvas.height-p.y;
-    if(h<0)h=0;
-    if(biome==='grass'||biome==='water')ctx.fillStyle='#3c8d2f';
-    else if(biome==='desert')ctx.fillStyle='#d8b84f';
-    else if(biome==='lava')ctx.fillStyle='#ff7b1a';
-    else if(biome==='rock')ctx.fillStyle='#666666';
-    ctx.fillRect(p.x,p.y,p.w,h);
-  }
-
-  particles.forEach(p=>{
-    ctx.fillStyle='rgba(255,255,255,'+(p.life/20)+')';
-    ctx.fillRect(p.x,p.y,6,6);
-  });
-
-  ctx.save();
-  ctx.translate(player.x,player.y);
-  ctx.drawImage(img,-player.size/2,-player.size/2,player.size,player.size);
-  ctx.restore();
-
-  ctx.restore();
+// platforms
+ctx.fillStyle="#3c8d2f";
+for(let p of platforms){
+ctx.fillRect(p.x,p.y,p.w,canvas.height-p.y);
 }
 
-function loop(){update();draw();requestAnimationFrame(loop)}
+// bird (with squish)
+ctx.save();
+ctx.translate(player.x,player.y);
+
+let squash = 1 - charge*0.005;
+let stretch = 1 + charge*0.005;
+
+ctx.scale(stretch,squash);
+
+ctx.drawImage(img,-player.size/2,-player.size/2,player.size,player.size);
+ctx.restore();
+}
+
+// loop
+function loop(){
+update();
+draw();
+requestAnimationFrame(loop);
+}
 loop();
 
 // controls
 function pressDown(){
-  if(player.onGround){
-    charge+=1.1;
-    if(charge>maxCharge)charge=maxCharge;
-  }
+if(player.onGround){
+charge+=1;
+if(charge>60)charge=60;
+}
 }
 
 function pressUp(){
-  if(player.onGround){
-    charge-=2;
-    if(charge<0)charge=0;
-  }
+if(player.onGround){
+charge-=1.5;
+if(charge<0)charge=0;
+}
 }
 
 function releaseJump(){
-  if(player.onGround&&charge>0){
-    hasStarted=true;
-    startedJumping=true;
-    sndLaunch.currentTime=0;
-    sndLaunch.play();
-    let vy=-12-charge*0.35;
-    let vx=3+charge*0.18;
-    player.vy=vy;
-    player.vx=vx;
-    player.onGround=false;
-    charge=0;
-  }
+if(player.onGround){
+sndLaunch.currentTime=0;
+sndLaunch.play();
+
+player.vy=-10-charge*0.3;
+player.vx=4+charge*0.2;
+player.onGround=false;
+charge=0;
+}
 }
 
+// hold loop
 function holdLoop(){
-  if(holdingDown&&player.onGround)pressDown();
-  if(holdingUp&&player.onGround)pressUp();
-  requestAnimationFrame(holdLoop);
+if(holdingDown)pressDown();
+if(holdingUp)pressUp();
+requestAnimationFrame(holdLoop);
 }
 holdLoop();
 
-const downBtn=document.getElementById('downBtn');
-const upBtn=document.getElementById('upBtn');
-const releaseBtn=document.getElementById('releaseBtn');
-const respawnBtn=document.getElementById('respawnBtn');
-
+// buttons
 downBtn.onmousedown=()=>holdingDown=true;
 downBtn.onmouseup=()=>holdingDown=false;
 downBtn.ontouchstart=e=>{e.preventDefault();holdingDown=true};
@@ -344,23 +253,15 @@ upBtn.onmouseup=()=>holdingUp=false;
 upBtn.ontouchstart=e=>{e.preventDefault();holdingUp=true};
 upBtn.ontouchend=()=>holdingUp=false;
 
-releaseBtn.onmousedown=releaseJump;
-releaseBtn.ontouchstart=e=>{e.preventDefault();releaseJump()};
+releaseBtn.onclick=releaseJump;
 
-respawnBtn.onclick=restart;
-
+// restart
 function restart(){
-  score=0;
-  lastPlatformIndex=-1;
-  skipMsg='';
-  skipTimer=0;
-  charge=0;
-  shakePower=0;
-  particles=[];
-  biome=biomes[Math.floor(Math.random()*biomes.length)];
-  setBackground();
-  createPlatforms();
-  document.getElementById('deathScreen').style.display='none';
+score=0;
+charge=0;
+dead=false;
+createPlatforms();
+document.getElementById('deathScreen').style.display='none';
 }
 </script>
 </body>

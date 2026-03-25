@@ -124,28 +124,39 @@ const player={x:200,y:200,vx:0,vy:0,size:100,onGround:true};
 
 // platforms
 let platforms=[];
+
 function createPlatforms(){
-platforms=[];
-let x=0;
-for(let i=0;i<50;i++){
-let w=180+Math.random()*80;
-let gap=260+Math.random()*200;
-let y=canvas.height*0.6+(Math.random()-0.5)*180;
-platforms.push({x,y,w,id:i});
-x+=w+gap;
+  platforms=[];
+  let x=0;
+  for(let i=0;i<20;i++){   // start with 20, infinite will extend
+    let w=180+Math.random()*80;
+    let gap=260+Math.random()*200;
+    let y=canvas.height*0.6+(Math.random()-0.5)*180;
+    platforms.push({x,y,w,id:i});
+    x+=w+gap;
+  }
+  player.x=platforms[0].x+100;
+  player.y=platforms[0].y-player.size/2;
+  player.vx=0;player.vy=0;
+  player.onGround=true;
+  lastPlatform=-1;
 }
-player.x=platforms[0].x+100;
-player.y=platforms[0].y-player.size/2;
-player.vx=0;player.vy=0;
-player.onGround=true;
-lastPlatform=-1;
+
+// infinite extension
+function extendPlatforms(){
+  let last = platforms[platforms.length-1];
+  let x = last.x + last.w + (260 + Math.random()*200);
+  let w = 180 + Math.random()*80;
+  let y = canvas.height*0.6 + (Math.random()-0.5)*180;
+  platforms.push({x,y,w,id:last.id+1});
 }
+
 createPlatforms();
 
 // water
 function drawWater(){
-ctx.fillStyle="#1e88e5";
-ctx.fillRect(0,canvas.height-40,canvas.width,40);
+  ctx.fillStyle="#1e88e5";
+  ctx.fillRect(0,canvas.height-40,canvas.width,40);
 }
 
 // update
@@ -160,61 +171,68 @@ player.y+=player.vy;
 let grounded=false;
 
 for(let p of platforms){
-if(player.x+player.size/2>p.x && player.x-player.size/2<p.x+p.w){
-let feet=player.y+player.size/2;
-let nextFeet=feet+player.vy;
+  if(player.x+player.size/2>p.x && player.x-player.size/2<p.x+p.w){
+    let feet=player.y+player.size/2;
+    let nextFeet=feet+player.vy;
 
-if(player.vy>=0 && feet<=p.y && nextFeet>=p.y){
-player.y=p.y-player.size/2;
-player.vy=0;
-player.vx*=0.7;
-grounded=true;
+    if(player.vy>=0 && feet<=p.y && nextFeet>=p.y){
+      player.y=p.y-player.size/2;
+      player.vy=0;
+      player.vx*=0.7;
+      grounded=true;
 
-// pointcounter
-if(p.id!==lastPlatform){
-let skipped=0;
-if(lastPlatform!==-1){
-skipped=p.id-lastPlatform-1;
-if(skipped<0)skipped=0;
-}
-score+=1+skipped;
-lastPlatform=p.id;
+      if(p.id!==lastPlatform){
+        let skipped=0;
+        if(lastPlatform!==-1){
+          skipped=p.id-lastPlatform-1;
+          if(skipped<0)skipped=0;
+        }
+        score+=1+skipped;
+        lastPlatform=p.id;
 
-// sound
-sndLaunch.pause();
-sndLaunch.currentTime=0;
-sndLand.currentTime=0;
-sndLand.play();
+        sndLaunch.pause();
+        sndLaunch.currentTime=0;
+        sndLand.currentTime=0;
+        sndLand.play();
 
-// shake
-addShake(6+skipped*2);
-}
-}
-}
+        addShake(6+skipped*2);
+      }
+    }
+  }
 }
 
 player.onGround=grounded;
 
 // scroll
 if(player.x>canvas.width*0.4){
-let d=player.x-canvas.width*0.4;
-player.x=canvas.width*0.4;
-platforms.forEach(p=>p.x-=d);
+  let d=player.x-canvas.width*0.4;
+  player.x=canvas.width*0.4;
+  platforms.forEach(p=>p.x-=d);
+
+  // remove old platforms
+  while(platforms[0].x + platforms[0].w < -300){
+    platforms.shift();
+  }
+
+  // add new platforms ahead
+  while(platforms[platforms.length-1].x < canvas.width + 600){
+    extendPlatforms();
+  }
 }
 
 // shake update
 if(shakePower>0.2){
-shakeX=(Math.random()-0.5)*shakePower;
-shakeY=(Math.random()-0.5)*shakePower;
-shakePower*=0.85;
+  shakeX=(Math.random()-0.5)*shakePower;
+  shakeY=(Math.random()-0.5)*shakePower;
+  shakePower*=0.85;
 }else{
-shakePower=0;shakeX=0;shakeY=0;
+  shakePower=0;shakeX=0;shakeY=0;
 }
 
 // death
 if(player.y>canvas.height){
-dead=true;
-document.getElementById('deathScreen').style.display='flex';
+  dead=true;
+  document.getElementById('deathScreen').style.display='flex';
 }
 
 document.getElementById('ui').textContent=score;
@@ -232,10 +250,9 @@ drawWater();
 
 ctx.fillStyle="#3c8d2f";
 for(let p of platforms){
-ctx.fillRect(p.x,p.y,p.w,canvas.height-p.y);
+  ctx.fillRect(p.x,p.y,p.w,canvas.height-p.y);
 }
 
-// squash
 ctx.save();
 let feetY=player.y+player.size/2;
 ctx.translate(player.x,feetY);
@@ -257,27 +274,27 @@ loop();
 // controls
 function pressDown(){
 if(player.onGround){
-charge+=1;
-if(charge>80)charge=80;
+  charge+=1;
+  if(charge>80)charge=80;
 }
 }
 
 function pressUp(){
 if(player.onGround){
-charge-=2;
-if(charge<0)charge=0;
+  charge-=2;
+  if(charge<0)charge=0;
 }
 }
 
 function releaseJump(){
 if(player.onGround){
-sndLaunch.currentTime=0;
-sndLaunch.play();
+  sndLaunch.currentTime=0;
+  sndLaunch.play();
 
-player.vy=-14-charge*0.45;
-player.vx=5+charge*0.3;
-player.onGround=false;
-charge=0;
+  player.vy=-14-charge*0.45;
+  player.vx=5+charge*0.3;
+  player.onGround=false;
+  charge=0;
 }
 }
 
